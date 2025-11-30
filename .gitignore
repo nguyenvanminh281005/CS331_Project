@@ -1,0 +1,6 @@
+/__pycache__/
+/logs
+/models/__pycache__/
+/outputs
+/saved_models
+/utils/__pycache__/
