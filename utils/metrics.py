@@ -2,6 +2,7 @@
 Evaluation Metrics for Face Recognition
 """
 import numpy as np
+import pandas as pd
 import torch
 from sklearn.metrics import roc_curve, auc
 from scipy.optimize import brentq
@@ -67,17 +68,26 @@ def calculate_tar_at_far(distances: np.ndarray, labels: np.ndarray,
     """
     fpr, tpr, thresholds = calculate_roc(distances, labels)
     
-    # Find threshold closest to target FAR
-    idx = np.argmin(np.abs(fpr - far_target))
-    tar = tpr[idx]
-    threshold = thresholds[idx]
+    # Use interpolation for more accurate TAR at exact FAR
+    if far_target <= np.min(fpr):
+        # If target FAR is smaller than minimum, use first point
+        tar = tpr[0]
+        threshold = thresholds[0]
+    elif far_target >= np.max(fpr):
+        # If target FAR is larger than maximum, use last point
+        tar = tpr[-1]
+        threshold = thresholds[-1]
+    else:
+        # Interpolate to get exact TAR at target FAR
+        tar = np.interp(far_target, fpr, tpr)
+        threshold = np.interp(far_target, fpr, thresholds)
     
     return tar, threshold
 
 
 def calculate_eer(distances: np.ndarray, labels: np.ndarray) -> Tuple[float, float]:
     """
-    Calculate Equal Error Rate (EER)
+    Calculate Equal Error Rate (EER) using interpolation
     
     Args:
         distances: Pairwise distances
@@ -92,10 +102,30 @@ def calculate_eer(distances: np.ndarray, labels: np.ndarray) -> Tuple[float, flo
     # EER is where FPR = FNR (or TPR = 1 - FPR)
     fnr = 1 - tpr
     
-    # Find intersection point
-    eer_idx = np.argmin(np.abs(fpr - fnr))
-    eer = (fpr[eer_idx] + fnr[eer_idx]) / 2
-    threshold = thresholds[eer_idx]
+    # Use interpolation to find exact intersection
+    try:
+        # Use brentq to find exact EER point
+        def diff_func(threshold_val):
+            idx = np.searchsorted(thresholds[::-1], threshold_val)
+            idx = len(thresholds) - 1 - idx
+            if idx >= len(fpr) - 1:
+                return fpr[-1] - fnr[-1]
+            elif idx <= 0:
+                return fpr[0] - fnr[0]
+            else:
+                # Interpolate
+                fpr_interp = np.interp(threshold_val, thresholds[::-1], fpr[::-1])
+                fnr_interp = 1 - np.interp(threshold_val, thresholds[::-1], tpr[::-1])
+                return fpr_interp - fnr_interp
+        
+        threshold = brentq(diff_func, thresholds.min(), thresholds.max())
+        eer = np.interp(threshold, thresholds[::-1], fpr[::-1])
+        
+    except (ValueError, RuntimeError):
+        # Fallback to closest point method
+        eer_idx = np.argmin(np.abs(fpr - fnr))
+        eer = (fpr[eer_idx] + fnr[eer_idx]) / 2
+        threshold = thresholds[eer_idx]
     
     return eer, threshold
 
@@ -182,17 +212,20 @@ def evaluate_verification(embeddings1: torch.Tensor, embeddings2: torch.Tensor,
         tar_at_far[f'tar@far={far}'] = tar
         thresholds_at_far[f'threshold@far={far}'] = threshold
     
-    # Calculate accuracy at EER threshold
-    accuracy = calculate_accuracy(distances, labels, eer_threshold)
+    # Remove accuracy metric as it's threshold-dependent and not reliable for comparison
+    # TAR@FAR and EER are more stable and meaningful metrics
     
     metrics = {
         'eer': eer,
         'eer_threshold': eer_threshold,
         'auc': auc_score,
-        'accuracy': accuracy,
         **tar_at_far,
         **thresholds_at_far,
     }
+    
+    # Add accuracy at EER for backward compatibility (but not recommended for comparison)
+    accuracy_at_eer = calculate_accuracy(distances, labels, eer_threshold)
+    metrics['accuracy_at_eer'] = accuracy_at_eer
     
     return metrics
 
@@ -200,7 +233,7 @@ def evaluate_verification(embeddings1: torch.Tensor, embeddings2: torch.Tensor,
 def evaluate_by_time_gap(pairs_df, embeddings_dict: Dict, 
                         time_gaps: List[int] = None) -> Dict:
     """
-    Evaluate performance degradation across different time gaps
+    Evaluate performance degradation across different time gaps with balanced pairs
     
     Args:
         pairs_df: DataFrame with pair information
@@ -223,7 +256,22 @@ def evaluate_by_time_gap(pairs_df, embeddings_dict: Dict,
         ]
         
         if len(gap_pairs) == 0:
+            print(f"Warning: No pairs found for time gap {time_gap}y")
             continue
+        
+        # Check class balance
+        positive_count = len(gap_pairs[gap_pairs['label'] == 1])
+        negative_count = len(gap_pairs[gap_pairs['label'] == 0])
+        
+        print(f"Time gap {time_gap}y: {positive_count} positive, {negative_count} negative pairs")
+        
+        # Balance pairs if significantly imbalanced
+        if abs(positive_count - negative_count) > min(positive_count, negative_count) * 0.2:
+            print(f"Warning: Imbalanced pairs for gap {time_gap}y. Balancing...")
+            min_count = min(positive_count, negative_count)
+            positive_pairs = gap_pairs[gap_pairs['label'] == 1].sample(n=min_count, random_state=config.SEED)
+            negative_pairs = gap_pairs[gap_pairs['label'] == 0].sample(n=min_count, random_state=config.SEED)
+            gap_pairs = pd.concat([positive_pairs, negative_pairs], ignore_index=True)
         
         # Extract embeddings for pairs
         embeddings1 = []
@@ -238,17 +286,29 @@ def evaluate_by_time_gap(pairs_df, embeddings_dict: Dict,
                 labels.append(row['label'])
         
         if len(embeddings1) == 0:
+            print(f"Warning: No valid embeddings found for time gap {time_gap}y")
             continue
         
         embeddings1 = torch.stack(embeddings1)
         embeddings2 = torch.stack(embeddings2)
         labels = torch.tensor(labels)
         
+        # Final balance check after filtering
+        final_positive = (labels == 1).sum().item()
+        final_negative = (labels == 0).sum().item()
+        print(f"Final count for gap {time_gap}y: {final_positive} positive, {final_negative} negative")
+        
         # Evaluate
         metrics = evaluate_verification(
             embeddings1, embeddings2, labels,
             distance_metric=config.EVAL_CONFIG["distance_metric"]
         )
+        
+        # Add pair statistics to metrics
+        metrics['num_pairs'] = len(labels)
+        metrics['num_positive'] = final_positive
+        metrics['num_negative'] = final_negative
+        metrics['balance_ratio'] = final_positive / max(final_negative, 1)
         
         results[f'gap_{time_gap}y'] = metrics
     
@@ -357,9 +417,16 @@ def visualize_time_gap_impact(results_dict: Dict, save_path: str = None,
             gap_value = int(gap_key.split('_')[1].replace('y', ''))
             time_gaps.append(gap_value)
             
-            # Get metric value
+            # Get metric value with appropriate scaling
             if metric in results[gap_key]:
-                metric_values.append(results[gap_key][metric] * 100)  # Convert to percentage
+                value = results[gap_key][metric]
+                # Convert to percentage for most metrics, but handle EER and AUC differently
+                if 'eer' in metric.lower():
+                    metric_values.append(value * 100)  # EER as percentage
+                elif 'auc' in metric.lower():
+                    metric_values.append(value)  # AUC stays as is (0-1)
+                else:
+                    metric_values.append(value * 100)  # TAR as percentage
             else:
                 metric_values.append(0)
         
@@ -377,9 +444,16 @@ def visualize_time_gap_impact(results_dict: Dict, save_path: str = None,
             plt.text(x, y + 1, f'{y:.1f}%', 
                     ha='center', va='bottom', fontsize=9, alpha=0.7)
     
-    # Customize plot
+    # Customize plot with appropriate y-label
     plt.xlabel('Time Gap (years)', fontsize=14, fontweight='bold')
-    plt.ylabel(f'{metric.upper().replace("@", " @ ")} (%)', fontsize=14, fontweight='bold')
+    
+    # Set y-label based on metric type
+    if 'auc' in metric.lower():
+        ylabel = f'{metric.upper()}'
+    else:
+        ylabel = f'{metric.upper().replace("@", " @ ")} (%)'
+    
+    plt.ylabel(ylabel, fontsize=14, fontweight='bold')
     
     if title is None:
         title = f'Impact of Time Gap on Face Recognition Performance\n({metric.upper().replace("@", " @ ")})'
@@ -412,12 +486,13 @@ def visualize_multiple_metrics(results_dict: Dict, save_dir: str = None):
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
     
-    # Metrics to visualize
+    # Metrics to visualize (removed accuracy as it's not reliable)
     metrics_to_plot = [
         ('tar@far=0.001', 'TAR @ FAR=0.1%'),
         ('tar@far=0.01', 'TAR @ FAR=1%'),
+        ('tar@far=0.0001', 'TAR @ FAR=0.01%'),
         ('eer', 'Equal Error Rate (EER)'),
-        ('accuracy', 'Accuracy'),
+        ('auc', 'AUC'),
     ]
     
     for metric_key, metric_label in metrics_to_plot:
@@ -434,16 +509,22 @@ def visualize_multiple_metrics(results_dict: Dict, save_dir: str = None):
         if not has_metric:
             continue
         
-        # Create plot
+        # Create plot with special handling for EER (lower is better)
         save_path = None
         if save_dir:
-            save_path = os.path.join(save_dir, f'time_gap_impact_{metric_key.replace("@", "_at_").replace("=", "")}.png')
+            safe_filename = metric_key.replace('@', '_at_').replace('=', '').replace('.', '_')
+            save_path = os.path.join(save_dir, f'time_gap_impact_{safe_filename}.png')
+        
+        # For EER, we want to show it as percentage and note that lower is better
+        plot_title = f'Impact of Time Gap on {metric_label}'
+        if 'eer' in metric_key.lower():
+            plot_title += ' (Lower is Better)'
         
         visualize_time_gap_impact(
             results_dict,
             save_path=save_path,
             metric=metric_key,
-            title=f'Impact of Time Gap on {metric_label}'
+            title=plot_title
         )
 
 

@@ -279,13 +279,14 @@ class Evaluator:
                 if 'gap_' in list(results.keys())[0]:  # Time-gap results
                     for gap_key, metrics in results.items():
                         print(f"\n{gap_key}:")
-                        print(f"  Accuracy: {metrics['accuracy']:.4f}")
+                        print(f"  Accuracy@EER: {metrics.get('accuracy_at_eer', 0):.4f}")
                         print(f"  EER: {metrics['eer']:.4f}")
                         print(f"  TAR@FAR=0.1%: {metrics.get('tar@far=0.001', 0):.4f}")
+                        print(f"  AUC: {metrics['auc']:.4f}")
                         if 'degradation_rate' in metrics:
                             print(f"  Degradation rate: {metrics['degradation_rate']:.6f}/year")
                 else:  # Single result
-                    print(f"  Accuracy: {results['accuracy']:.4f}")
+                    print(f"  Accuracy@EER: {results.get('accuracy_at_eer', 0):.4f}")
                     print(f"  EER: {results['eer']:.4f}")
                     print(f"  AUC: {results['auc']:.4f}")
         

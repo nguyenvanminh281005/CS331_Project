@@ -81,10 +81,23 @@ class TemporalAwareModel(nn.Module):
         """
         # Extract features from main input
         if self.training and labels is not None:
-            logits, embeddings = self.base_model(x, labels)
+            # Handle different return values based on backbone
+            result = self.base_model(x, labels)
+            if len(result) == 3:
+                # MagFace returns (logits, embeddings, magnitudes)
+                logits, embeddings, magnitudes = result
+            else:
+                # ArcFace returns (logits, embeddings)
+                logits, embeddings = result
         else:
-            embeddings = self.base_model(x)
+            # Inference mode
+            result = self.base_model(x)
             logits = None
+            if isinstance(result, tuple):
+                # Handle tuple return (embeddings, magnitudes or quality_scores)
+                embeddings = result[0]
+            else:
+                embeddings = result
         
         # Extract temporal features if provided
         temporal_embeddings = None
@@ -95,19 +108,23 @@ class TemporalAwareModel(nn.Module):
                 # Don't need logits for temporal samples
                 self.base_model.eval()
                 with torch.no_grad():
-                    temporal_embeddings = self.base_model(x_temporal)
+                    result = self.base_model(x_temporal)
+                    temporal_embeddings = result[0] if isinstance(result, tuple) else result
                 self.base_model.train()
             else:
-                temporal_embeddings = self.base_model(x_temporal)
+                result = self.base_model(x_temporal)
+                temporal_embeddings = result[0] if isinstance(result, tuple) else result
         
         if x_negative is not None:
             if self.training and labels is not None:
                 self.base_model.eval()
                 with torch.no_grad():
-                    negative_embeddings = self.base_model(x_negative)
+                    result = self.base_model(x_negative)
+                    negative_embeddings = result[0] if isinstance(result, tuple) else result
                 self.base_model.train()
             else:
-                negative_embeddings = self.base_model(x_negative)
+                result = self.base_model(x_negative)
+                negative_embeddings = result[0] if isinstance(result, tuple) else result
         
         if self.training and labels is not None:
             return logits, embeddings, temporal_embeddings, negative_embeddings

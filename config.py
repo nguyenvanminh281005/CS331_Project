@@ -11,7 +11,7 @@ MODEL_ROOT = os.path.join(PROJECT_ROOT, "saved_models")
 LOG_ROOT = os.path.join(PROJECT_ROOT, "logs")
 
 # Dataset selection (can be changed at runtime)
-ACTIVE_DATASET = "agedb_30"  # Options: 'agedb_30', 'morph_2'
+ACTIVE_DATASET = "morph_2"  # Options: 'agedb_30', 'morph_2'
 
 # Dataset configurations
 AGEDB_CONFIG = {
@@ -119,8 +119,8 @@ TEMPORAL_CONFIG = {
 
 # Training configurations
 TRAIN_CONFIG = {
-    "batch_size": 64,
-    "num_epochs": 10,
+    "batch_size": 128,
+    "num_epochs": 50,
     "learning_rate": 0.001,
     "weight_decay": 5e-4,
     "momentum": 0.9,
@@ -138,6 +138,7 @@ EVAL_CONFIG = {
     "distance_metric": "cosine",  # 'cosine' or 'euclidean'
     "threshold_range": (0.0, 1.0),
     "num_thresholds": 1000,
+    # Remove accuracy_far as we're no longer using threshold-dependent accuracy
 }
 
 # Quality filtering configurations

@@ -18,6 +18,7 @@ from utils.visualization import (
     create_evaluation_report
 )
 from utils.statistical_analysis import StatisticalAnalyzer, create_statistical_report
+from test_image_quality_robustness import RobustnessEvaluator, visualize_robustness_results
 
 
 def step1_data_preprocessing(dataset='agedb_30'):
@@ -99,7 +100,6 @@ def step1_data_preprocessing(dataset='agedb_30'):
     
     print("\nData preprocessing complete!")
     return metadata_df
-
 
 def step2_generate_pairs(dataset='agedb_30'):
     """
@@ -205,16 +205,17 @@ def step2_generate_pairs(dataset='agedb_30'):
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
 
-
-def step3_train_baseline_models():
+def step3_train_baseline_models(backbone='magface'):
     """
     Step 3: Train Baseline Models
-    - Train ArcFace
-    - Train MagFace
+    - Train specified backbone model (ArcFace or MagFace)
     - Evaluate on standard benchmarks
+    
+    Args:
+        backbone: 'arcface' or 'magface' - which model to train
     """
     print("\n" + "="*80)
-    print("STEP 3: TRAIN BASELINE MODELS")
+    print(f"STEP 3: TRAIN BASELINE MODELS (Backbone: {backbone.upper()})")
     print("="*80)
     
     # Load data
@@ -232,20 +233,13 @@ def step3_train_baseline_models():
     print(f"Number of classes: {num_classes}")
     print(f"Identity range: {train_df['identity'].min()} - {train_df['identity'].max()}")
     
-    # Train ArcFace
-    print("\n--- Training ArcFace ---")
-    arcface_trainer = Trainer(model_type='arcface', num_classes=num_classes, use_temporal=False)
-    arcface_trainer.setup_dataloader(train_df, val_df)
-    arcface_trainer.train(num_epochs=config.TRAIN_CONFIG["num_epochs"])
+    # Train selected backbone
+    print(f"\n--- Training {backbone.upper()} ---")
+    trainer = Trainer(model_type=backbone, num_classes=num_classes, use_temporal=False)
+    trainer.setup_dataloader(train_df, val_df)
+    trainer.train(num_epochs=config.TRAIN_CONFIG["num_epochs"])
     
-    # Train MagFace
-    print("\n--- Training MagFace ---")
-    magface_trainer = Trainer(model_type='magface', num_classes=num_classes, use_temporal=False)
-    magface_trainer.setup_dataloader(train_df, val_df)
-    magface_trainer.train(num_epochs=config.TRAIN_CONFIG["num_epochs"])
-    
-    print("\nBaseline training complete!")
-
+    print(f"\n{backbone.upper()} baseline training complete!")
 
 def step4_train_temporal_model(backbone='magface'):
     """
@@ -340,7 +334,6 @@ def step4_train_temporal_model(backbone='magface'):
     temporal_trainer.train(num_epochs=config.TRAIN_CONFIG["num_epochs"])
     
     print("\nTemporal-aware model training complete!")
-
 
 def step5_evaluate_models(backbone='magface', evaluate_dataset=None):
     """
@@ -443,17 +436,131 @@ def step5_evaluate_models(backbone='magface', evaluate_dataset=None):
     
     return all_results
 
-
-def step6_visualization_and_statistics(all_results):
+def step6_test_robustness(backbone='magface', test_dataset=None):
     """
-    Step 6: Visualization & Statistical Analysis
+    Step 6: Test Image Quality Robustness
+    - Test resolution degradation
+    - Test blur robustness
+    - Test noise robustness (Gaussian & Salt-Pepper)
+    - Compare ArcFace vs MagFace
+    
+    Args:
+        backbone: 'arcface' or 'magface' - backbone for temporal model
+        test_dataset: Dataset to test on (None = use active dataset)
+    """
+    print("\n" + "="*80)
+    print("STEP 6: IMAGE QUALITY ROBUSTNESS TESTING")
+    if test_dataset:
+        print(f"Testing on: {test_dataset.upper()}")
+    print(f"Temporal backbone: {backbone.upper()}")
+    print("="*80)
+    
+    # Determine pairs file
+    if test_dataset:
+        config.set_active_dataset(test_dataset)
+    
+    if config.ACTIVE_DATASET == 'morph_2':
+        pairs_path = os.path.join(config.OUTPUT_ROOT, "pairs", "morph2_temporal_pairs.csv")
+    else:
+        pairs_path = os.path.join(config.OUTPUT_ROOT, "pairs", "agedb_30_pairs.csv")
+    
+    if not os.path.exists(pairs_path):
+        print(f"Error: Pairs not found: {pairs_path}")
+        print("Please run step2_generate_pairs first")
+        return
+    
+    print(f"Loading pairs from: {pairs_path}")
+    pairs_df = pd.read_csv(pairs_path)
+    
+    # Rename columns if needed (for compatibility)
+    if 'img1_path' in pairs_df.columns and 'enrollment_path' not in pairs_df.columns:
+        pairs_df = pairs_df.rename(columns={
+            'img1_path': 'enrollment_path',
+            'img2_path': 'probe_path'
+        })
+    
+    # Limit pairs for faster testing (optional)
+    # Use a subset for quick testing, comment out for full evaluation
+    # pairs_df = pairs_df.sample(n=min(500, len(pairs_df)), random_state=42)
+    print(f"Testing with {len(pairs_df)} pairs")
+    
+    # Output directory
+    output_dir = os.path.join(config.OUTPUT_ROOT, "robustness_results")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Test models
+    models_to_test = {
+        'ArcFace': {
+            'type': 'arcface',
+            'checkpoint': os.path.join(config.MODEL_ROOT, 'arcface_best_model.pth')
+        },
+        'MagFace': {
+            'type': 'magface',
+            'checkpoint': os.path.join(config.MODEL_ROOT, 'magface_best_model.pth')
+        },
+    }
+    
+    # Optionally add temporal model if trained
+    temporal_checkpoint = os.path.join(config.MODEL_ROOT, 'temporal_best_model.pth')
+    if os.path.exists(temporal_checkpoint):
+        models_to_test['Temporal-Aware'] = {
+            'type': 'temporal',
+            'checkpoint': temporal_checkpoint,
+            'backbone': backbone
+        }
+    
+    all_robustness_results = {}
+    
+    for model_name, model_info in models_to_test.items():
+        print(f"\n{'='*80}")
+        print(f"Testing {model_name} Robustness")
+        print(f"{'='*80}")
+        
+        if not os.path.exists(model_info['checkpoint']):
+            print(f"Checkpoint not found: {model_info['checkpoint']}")
+            continue
+        
+        # Create evaluator
+        if model_info['type'] == 'temporal':
+            evaluator = RobustnessEvaluator(
+                model_type=model_info['type'],
+                checkpoint_path=model_info['checkpoint'],
+                backbone=model_info['backbone']
+            )
+        else:
+            evaluator = RobustnessEvaluator(
+                model_type=model_info['type'],
+                checkpoint_path=model_info['checkpoint']
+            )
+        
+        # Run all robustness tests
+        model_output_dir = os.path.join(output_dir, model_name.replace(' ', '_'))
+        results = evaluator.run_all_robustness_tests(pairs_df, output_dir=model_output_dir)
+        all_robustness_results[model_name] = results
+    
+    # Create comparison visualizations
+    print("\n" + "="*80)
+    print("CREATING COMPARISON VISUALIZATIONS")
+    print("="*80)
+    
+    viz_dir = os.path.join(output_dir, "comparison_plots")
+    visualize_robustness_results(all_robustness_results, output_dir=viz_dir)
+    
+    print("\nRobustness testing complete!")
+    print(f"Results saved to: {output_dir}")
+    
+    return all_robustness_results
+
+def step7_visualization_and_statistics(all_results):
+    """
+    Step 7: Visualization & Statistical Analysis
     - Plot ROC curves
     - Plot TAR vs Time Gap
     - Embedding trajectory visualization
     - LME model analysis
     """
     print("\n" + "="*80)
-    print("STEP 6: VISUALIZATION & STATISTICAL ANALYSIS")
+    print("STEP 7: VISUALIZATION & STATISTICAL ANALYSIS")
     print("="*80)
     
     output_dir = os.path.join(config.OUTPUT_ROOT, "final_results")
@@ -482,13 +589,12 @@ def step6_visualization_and_statistics(all_results):
     print("\nVisualization and analysis complete!")
     print(f"Results saved to: {output_dir}")
 
-
 def main():
     """Main pipeline"""
     parser = argparse.ArgumentParser(description='Age-Invariant Face Recognition Pipeline')
     parser.add_argument('--step', type=str, default='all',
                       choices=['all', 'preprocess', 'pairs', 'train_baseline', 
-                              'train_temporal', 'evaluate', 'visualize'],
+                              'train_temporal', 'evaluate', 'test_robustness', 'visualize'],
                       help='Which step to run')
     parser.add_argument('--dataset', type=str, default='morph_2',
                       choices=['agedb_30', 'morph_2'],
@@ -502,6 +608,9 @@ def main():
     parser.add_argument('--eval-dataset', type=str, default=None,
                       choices=['agedb_30', 'morph_2'],
                       help='Dataset to evaluate on (default: same as --dataset)')
+    parser.add_argument('--test-dataset', type=str, default=None,
+                      choices=['agedb_30', 'morph_2'],
+                      help='Dataset to test robustness on (default: same as --dataset)')
     
     args = parser.parse_args()
     
@@ -515,17 +624,17 @@ def main():
     print(f"Backbone: {args.backbone.upper()}")
     print("="*80)
     
-    if args.step == 'all' or args.step == 'preprocess':
-        metadata_df = step1_data_preprocessing(args.dataset)
+    # if args.step == 'all' or args.step == 'preprocess':
+    #     metadata_df = step1_data_preprocessing(args.dataset)
     
-    if args.step == 'all' or args.step == 'pairs':
-        step2_generate_pairs(args.dataset)
+    # if args.step == 'all' or args.step == 'pairs':
+    #     step2_generate_pairs(args.dataset)
     
     if args.step == 'all' or args.step == 'train_baseline':
-        step3_train_baseline_models()
+        step3_train_baseline_models(backbone=args.backbone)
     
-    if args.step == 'all' or args.step == 'train_temporal':
-        step4_train_temporal_model(backbone=args.backbone)
+    # if args.step == 'all' or args.step == 'train_temporal':
+    #     step4_train_temporal_model(backbone=args.backbone)
     
     if args.step == 'all' or args.step == 'evaluate':
         eval_backbone = args.eval_backbone if args.eval_backbone else args.backbone
@@ -534,6 +643,14 @@ def main():
         if eval_dataset != args.dataset:
             config.set_active_dataset(eval_dataset)
         all_results = step5_evaluate_models(backbone=eval_backbone, evaluate_dataset=eval_dataset)
+    
+    # if args.step == 'all' or args.step == 'test_robustness':
+    #     test_backbone = args.eval_backbone if args.eval_backbone else args.backbone
+    #     test_dataset = args.test_dataset if args.test_dataset else args.dataset
+    #     # Set active dataset for testing if different
+    #     if test_dataset != args.dataset:
+    #         config.set_active_dataset(test_dataset)
+    #     robustness_results = step6_test_robustness(backbone=test_backbone, test_dataset=test_dataset)
     
     if args.step == 'all' or args.step == 'visualize':
         # Load results if not already loaded
@@ -548,7 +665,10 @@ def main():
                     with open(os.path.join(results_path, model_file), 'r') as f:
                         all_results[model_name] = json.load(f)
             
-            step6_visualization_and_statistics(all_results)
+            step7_visualization_and_statistics(all_results)
+        except Exception as e:
+            print(f"Error loading results: {e}")
+            step7_visualization_and_statistics(all_results)
         except Exception as e:
             print(f"Error loading results: {e}")
     
