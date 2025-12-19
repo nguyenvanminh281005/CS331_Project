@@ -186,13 +186,19 @@ class MORPH2Processor:
             
             print(f"  Generated {positive_pairs} positive pairs")
             
-            # Generate negative pairs (different identities)
+            # Generate negative pairs (different identities) - match the number of positive pairs
+            target_negative_pairs = positive_pairs  # Match positive pairs count
             negative_pairs = 0
             identities = list(identity_groups.groups.keys())
             
-            np.random.seed(config.SEED)
+            np.random.seed(config.SEED + time_gap)  # Different seed per time_gap
             
-            while negative_pairs < pairs_per_gap:
+            # Try with time gap matching first
+            attempts = 0
+            max_attempts_with_gap = target_negative_pairs * 20  # Reasonable limit
+            
+            while negative_pairs < target_negative_pairs and attempts < max_attempts_with_gap:
+                attempts += 1
                 # Random select two different identities
                 id1, id2 = np.random.choice(identities, size=2, replace=False)
                 
@@ -217,6 +223,31 @@ class MORPH2Processor:
                         'probe_age': row2['age']
                     })
                     negative_pairs += 1
+            
+            # If we still need more negative pairs, generate without strict age gap constraint
+            while negative_pairs < target_negative_pairs:
+                # Random select two different identities
+                id1, id2 = np.random.choice(identities, size=2, replace=False)
+                
+                group1 = identity_groups.get_group(id1)
+                group2 = identity_groups.get_group(id2)
+                
+                # Random select one image from each identity
+                row1 = group1.sample(n=1).iloc[0]
+                row2 = group2.sample(n=1).iloc[0]
+                
+                age_diff = abs(row2['age'] - row1['age'])
+                
+                pairs.append({
+                    'enrollment_path': row1['aligned_path'],
+                    'probe_path': row2['aligned_path'],
+                    'label': 0,
+                    'time_gap': age_diff,  # Keep actual age difference
+                    'identity': f"{id1}_{id2}",
+                    'enrollment_age': row1['age'],
+                    'probe_age': row2['age']
+                })
+                negative_pairs += 1
             
             print(f"  Generated {negative_pairs} negative pairs")
         

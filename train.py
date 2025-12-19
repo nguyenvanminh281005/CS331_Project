@@ -15,8 +15,7 @@ from datetime import datetime
 import json
 
 import config
-from models import create_arcface_model, create_magface_model, create_temporal_model
-from models.temporal_model import TemporalTripletDataset
+from models import create_arcface_model, create_magface_model
 from utils.metrics import evaluate_verification
 from torch.utils.tensorboard import SummaryWriter
 
@@ -24,17 +23,18 @@ from torch.utils.tensorboard import SummaryWriter
 class Trainer:
     """Trainer for face recognition models"""
     
-    def __init__(self, model_type='arcface', num_classes=None, use_temporal=False, backbone='magface'):
+    def __init__(self, model_type='arcface', num_classes=None, backbone='magface', use_temporal=False):
         """
         Args:
-            model_type: 'arcface', 'magface', or 'temporal'
+            model_type: 'arcface' or 'magface'
             num_classes: Number of identity classes
-            use_temporal: Use temporal learning
-            backbone: 'arcface' or 'magface' - backbone model for temporal training
+            backbone: 'arcface' or 'magface' - backbone model
+            use_temporal: Whether to use temporal training (default: False)
         """
         self.model_type = model_type
-        self.use_temporal = use_temporal
+        self.num_classes = num_classes
         self.backbone = backbone
+        self.use_temporal = use_temporal
         self.device = torch.device(config.DEVICE if torch.cuda.is_available() else 'cpu')
         
         # Create model
@@ -42,15 +42,8 @@ class Trainer:
             self.model = create_arcface_model(num_classes=num_classes)
         elif model_type == 'magface':
             self.model = create_magface_model(num_classes=num_classes)
-        elif model_type == 'temporal':
-            # Use specified backbone for temporal model
-            self.model = create_temporal_model(
-                num_classes=num_classes, 
-                use_temporal_loss=True,
-                backbone=backbone
-            )
         else:
-            raise ValueError(f"Unknown model type: {model_type}")
+            raise ValueError(f"Unknown model type: {model_type}. Use 'arcface' or 'magface'")
         
         self.model = self.model.to(self.device)
         
@@ -77,14 +70,13 @@ class Trainer:
         print(f"Device: {self.device}")
         print(f"Number of parameters: {sum(p.numel() for p in self.model.parameters()):,}")
     
-    def setup_dataloader(self, train_df, val_df=None, use_temporal_triplets=False):
+    def setup_dataloader(self, train_df, val_df=None):
         """
         Setup data loaders
         
         Args:
             train_df: Training dataframe
             val_df: Validation dataframe
-            use_temporal_triplets: Use temporal triplet dataset
         """
         # Define transforms
         train_transform = transforms.Compose([
@@ -101,32 +93,27 @@ class Trainer:
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])
         
-        if use_temporal_triplets:
-            # Use temporal triplet dataset
-            train_dataset = TemporalTripletDataset(train_df, transform=train_transform)
-            val_dataset = TemporalTripletDataset(val_df, transform=val_transform) if val_df is not None else None
+        # Use identity dataset for classification training
+        from utils.data_processor import IdentityDataset, AgeDBDataset
+        
+        # Check if we have metadata DataFrame or annotation file
+        if isinstance(train_df, pd.DataFrame) and 'identity' in train_df.columns:
+            # Training with identity labels
+            train_dataset = IdentityDataset(train_df, transform=train_transform)
+            val_dataset = None  # No validation for now, will use pairs later
         else:
-            # Use identity dataset for classification training
-            from utils.data_processor import IdentityDataset, AgeDBDataset
-            
-            # Check if we have metadata DataFrame or annotation file
-            if isinstance(train_df, pd.DataFrame) and 'identity' in train_df.columns:
-                # Training with identity labels
-                train_dataset = IdentityDataset(train_df, transform=train_transform)
-                val_dataset = None  # No validation for now, will use pairs later
-            else:
-                # Use annotation file for verification pairs
-                annotation_file = config.AGEDB_CONFIG["annotation_file"]
-                train_dataset = AgeDBDataset(
-                    annotation_file=annotation_file,
-                    image_folder=config.AGEDB_CONFIG["image_folder"],
-                    transform=train_transform
-                )
-                val_dataset = AgeDBDataset(
-                    annotation_file=annotation_file,
-                    image_folder=config.AGEDB_CONFIG["image_folder"],
-                    transform=val_transform
-                ) if val_df is not None else None
+            # Use annotation file for verification pairs
+            annotation_file = config.AGEDB_CONFIG["annotation_file"]
+            train_dataset = AgeDBDataset(
+                annotation_file=annotation_file,
+                image_folder=config.AGEDB_CONFIG["image_folder"],
+                transform=train_transform
+            )
+            val_dataset = AgeDBDataset(
+                annotation_file=annotation_file,
+                image_folder=config.AGEDB_CONFIG["image_folder"],
+                transform=val_transform
+            ) if val_df is not None else None
         
         self.train_loader = DataLoader(
             train_dataset,
@@ -325,6 +312,10 @@ class Trainer:
         
         for epoch in range(num_epochs):
             self.current_epoch = epoch
+            
+            # Update model's epoch for warmup strategy (if temporal model)
+            if hasattr(self.model, 'set_epoch'):
+                self.model.set_epoch(epoch)
             
             # Train
             train_loss, loss_components = self.train_epoch()

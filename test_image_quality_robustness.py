@@ -17,7 +17,7 @@ from typing import Dict, List, Tuple
 import pickle
 
 import config
-from models import create_arcface_model, create_magface_model, create_temporal_model
+from models import create_arcface_model, create_magface_model
 from utils.metrics import evaluate_verification
 
 

@@ -12,11 +12,12 @@ from typing import Dict
 import cv2
 
 import config
-from models import create_arcface_model, create_magface_model, create_temporal_model
+from models import create_arcface_model, create_magface_model
 from utils.metrics import (
     evaluate_verification,
     evaluate_by_time_gap,
-    calculate_degradation_rate
+    calculate_degradation_rate,
+    visualize_similarity_distributions_by_time_gap
 )
 
 
@@ -191,7 +192,7 @@ class Evaluator:
         
         return metrics
     
-    def evaluate_by_time_gap(self, pairs_df, features_dict=None, extract_features=True):
+    def evaluate_by_time_gap(self, pairs_df, features_dict=None, extract_features=True, visualize=True):
         """
         Evaluate performance across different time gaps
         
@@ -199,6 +200,7 @@ class Evaluator:
             pairs_df: DataFrame with time gap information
             features_dict: Pre-computed features
             extract_features: Whether to extract features
+            visualize: Whether to create distribution visualizations
             
         Returns:
             results: Dictionary with results for each time gap
@@ -219,7 +221,73 @@ class Evaluator:
             time_gaps=config.TEMPORAL_CONFIG["time_gaps"]
         )
         
+        # Create visualization if requested
+        if visualize:
+            print("\nCreating similarity distribution visualizations for time gaps...")
+            viz_dir = os.path.join(config.OUTPUT_ROOT, "visualizations")
+            os.makedirs(viz_dir, exist_ok=True)
+            
+            viz_path = os.path.join(viz_dir, f"{self.model_type}_time_gap_distributions.png")
+            visualize_similarity_distributions_by_time_gap(
+                pairs_df,
+                features_dict,
+                time_gaps=config.TEMPORAL_CONFIG["time_gaps"],
+                save_path=viz_path
+            )
+        
         return results
+    
+    def compute_similarity_scores_from_pairs(self, pairs_df, features_dict=None, extract_features=True):
+        """
+        Compute similarity scores for pairs without full evaluation metrics
+        
+        Args:
+            pairs_df: DataFrame with columns [enrollment_path, probe_path, label, ...]
+            features_dict: Pre-computed features (optional)
+            extract_features: Whether to extract features if not provided
+            
+        Returns:
+            scores: Array of similarity scores
+        """
+        # Extract features if needed
+        if features_dict is None and extract_features:
+            all_paths = pd.concat([
+                pairs_df['enrollment_path'],
+                pairs_df['probe_path']
+            ]).unique()
+            
+            features_dict = self.extract_features(all_paths)
+        
+        # Get embeddings for pairs
+        embeddings1 = []
+        embeddings2 = []
+        
+        for _, row in tqdm(pairs_df.iterrows(), total=len(pairs_df), desc="Computing similarity scores"):
+            if row['enrollment_path'] in features_dict and \
+               row['probe_path'] in features_dict:
+                embeddings1.append(features_dict[row['enrollment_path']])
+                embeddings2.append(features_dict[row['probe_path']])
+        
+        if len(embeddings1) == 0:
+            print("No valid pairs found for similarity computation!")
+            return None
+        
+        # Stack embeddings
+        embeddings1 = torch.stack(embeddings1)
+        embeddings2 = torch.stack(embeddings2)
+        
+        # Compute similarity scores
+        if config.EVAL_CONFIG["distance_metric"] == "cosine":
+            # Cosine similarity
+            embeddings1 = torch.nn.functional.normalize(embeddings1, p=2, dim=1)
+            embeddings2 = torch.nn.functional.normalize(embeddings2, p=2, dim=1)
+            scores = torch.sum(embeddings1 * embeddings2, dim=1)
+        else:
+            # Euclidean distance (convert to similarity)
+            distances = torch.norm(embeddings1 - embeddings2, p=2, dim=1)
+            scores = 1 / (1 + distances)  # Convert distance to similarity
+        
+        return scores.cpu().numpy()
     
     def evaluate_all_protocols(self, pairs_dir=None, evaluate_dataset=None):
         """

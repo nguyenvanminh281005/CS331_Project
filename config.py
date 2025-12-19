@@ -109,18 +109,10 @@ MAGFACE_CONFIG = {
     "embedding_size": 512,
 }
 
-# Temporal-Aware Model configurations
-TEMPORAL_CONFIG = {
-    "alpha": 0.5,  # Weight for negative pair loss
-    "margin": 0.4,  # Margin for contrastive learning
-    "lambda_tcl": 0.3,  # Weight for temporal contrastive loss
-    "time_gaps": [1, 2, 4, 6, 8, 10],  # Years for time-gap analysis
-}
-
 # Training configurations
 TRAIN_CONFIG = {
     "batch_size": 128,
-    "num_epochs": 50,
+    "num_epochs": 30,
     "learning_rate": 0.001,
     "weight_decay": 5e-4,
     "momentum": 0.9,
@@ -174,6 +166,11 @@ STATS_CONFIG = {
     "confidence_level": 0.95,
     "bootstrap_samples": 1000,
     "random_seed": 42,
+}
+
+# Temporal evaluation configurations
+TEMPORAL_CONFIG = {
+    "time_gaps": [1, 2, 4, 6, 8, 10],  # Time gaps in years for temporal evaluation
 }
 
 # Device configuration

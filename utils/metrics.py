@@ -244,7 +244,7 @@ def evaluate_by_time_gap(pairs_df, embeddings_dict: Dict,
         results: Dictionary with results for each time gap
     """
     if time_gaps is None:
-        time_gaps = config.TEMPORAL_CONFIG["time_gaps"]
+        time_gaps = [1, 2, 4, 6, 8, 10]  # Default time gaps in years
     
     results = {}
     
@@ -439,10 +439,18 @@ def visualize_time_gap_impact(results_dict: Dict, save_path: str = None,
                 label=model_name,
                 alpha=0.8)
         
-        # Add value labels on each point
+        # Add value labels on each point with appropriate formatting
         for x, y in zip(time_gaps, metric_values):
-            plt.text(x, y + 1, f'{y:.1f}%', 
-                    ha='center', va='bottom', fontsize=9, alpha=0.7)
+            if 'auc' in metric.lower():
+                # AUC is 0-1, show as decimal with smaller offset
+                offset = 0.01 if y < 0.95 else -0.02
+                plt.text(x, y + offset, f'{y:.3f}', 
+                        ha='center', va='bottom' if offset > 0 else 'top', 
+                        fontsize=9, alpha=0.7)
+            else:
+                # Other metrics shown as percentage
+                plt.text(x, y + 1, f'{y:.1f}%', 
+                        ha='center', va='bottom', fontsize=9, alpha=0.7)
     
     # Customize plot with appropriate y-label
     plt.xlabel('Time Gap (years)', fontsize=14, fontweight='bold')
@@ -458,6 +466,10 @@ def visualize_time_gap_impact(results_dict: Dict, save_path: str = None,
     if title is None:
         title = f'Impact of Time Gap on Face Recognition Performance\n({metric.upper().replace("@", " @ ")})'
     plt.title(title, fontsize=16, fontweight='bold', pad=20)
+    
+    # Set appropriate y-axis limits
+    if 'auc' in metric.lower():
+        plt.ylim([0.85, 1.0])  # AUC typically ranges from 0.85-1.0 for good models
     
     plt.legend(loc='best', fontsize=11, framealpha=0.9)
     plt.grid(True, alpha=0.3, linestyle='--')
@@ -526,6 +538,130 @@ def visualize_multiple_metrics(results_dict: Dict, save_dir: str = None):
             metric=metric_key,
             title=plot_title
         )
+
+
+def visualize_similarity_distributions_by_time_gap(pairs_df, embeddings_dict: Dict, 
+                                                   time_gaps: List[int] = None,
+                                                   save_path: str = None):
+    """
+    Visualize similarity score distributions (FMR/FNMR) for each time gap
+    Similar to age group analysis visualization
+    
+    Args:
+        pairs_df: DataFrame with pair information and time gaps
+        embeddings_dict: Dictionary mapping image paths to embeddings
+        time_gaps: List of time gaps to visualize
+        save_path: Path to save the plot
+    """
+    if time_gaps is None:
+        time_gaps = [1, 2, 4, 6, 8, 10]
+    
+    # Calculate number of rows needed (2 plots per row: distribution + ROC)
+    n_gaps = len(time_gaps)
+    n_rows = (n_gaps + 1) // 2  # Round up
+    
+    fig, axes = plt.subplots(n_rows, 4, figsize=(20, 5*n_rows))
+    if n_rows == 1:
+        axes = axes.reshape(1, -1)
+    
+    colors_genuine = plt.cm.Blues(np.linspace(0.4, 0.9, n_gaps))
+    colors_impostor = plt.cm.Reds(np.linspace(0.4, 0.9, n_gaps))
+    
+    for idx, time_gap in enumerate(time_gaps):
+        row = idx // 2
+        col_offset = (idx % 2) * 2
+        
+        # Filter pairs for this time gap
+        gap_pairs = pairs_df[
+            (pairs_df['time_gap'] >= time_gap - 0.5) & 
+            (pairs_df['time_gap'] < time_gap + 0.5)
+        ]
+        
+        if len(gap_pairs) == 0:
+            continue
+        
+        # Extract embeddings and compute similarity scores
+        scores = []
+        labels = []
+        
+        for _, row_data in gap_pairs.iterrows():
+            if row_data['enrollment_path'] in embeddings_dict and \
+               row_data['probe_path'] in embeddings_dict:
+                emb1 = embeddings_dict[row_data['enrollment_path']]
+                emb2 = embeddings_dict[row_data['probe_path']]
+                
+                # Cosine similarity
+                similarity = torch.nn.functional.cosine_similarity(
+                    emb1.unsqueeze(0), emb2.unsqueeze(0)
+                ).item()
+                
+                scores.append(similarity)
+                labels.append(row_data['label'])
+        
+        if len(scores) == 0:
+            continue
+        
+        scores = np.array(scores)
+        labels = np.array(labels)
+        
+        # Separate genuine and impostor scores
+        genuine_scores = scores[labels == 1]
+        impostor_scores = scores[labels == 0]
+        
+        # Plot 1: Distribution histogram
+        ax_dist = axes[row, col_offset]
+        ax_dist.hist(impostor_scores, bins=50, alpha=0.6, label='Impostor (Different Person)', 
+                    color='red', density=True)
+        ax_dist.hist(genuine_scores, bins=50, alpha=0.6, label='Genuine (Same Person)', 
+                    color='blue', density=True)
+        ax_dist.set_xlabel('Similarity Score')
+        ax_dist.set_ylabel('Density')
+        ax_dist.set_title(f'Score Distribution - Gap {time_gap}y\n'
+                         f'Genuine: {len(genuine_scores)}, Impostor: {len(impostor_scores)}')
+        ax_dist.legend()
+        ax_dist.grid(True, alpha=0.3)
+        
+        # Add statistics
+        stats_text = f'Genuine: μ={np.mean(genuine_scores):.3f}, σ={np.std(genuine_scores):.3f}\n'
+        stats_text += f'Impostor: μ={np.mean(impostor_scores):.3f}, σ={np.std(impostor_scores):.3f}'
+        ax_dist.text(0.02, 0.98, stats_text, transform=ax_dist.transAxes,
+                    verticalalignment='top', fontsize=8,
+                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        
+        # Plot 2: ROC Curve
+        ax_roc = axes[row, col_offset + 1]
+        fpr, tpr, _ = roc_curve(labels, scores)
+        roc_auc = auc(fpr, tpr)
+        
+        ax_roc.plot(fpr, tpr, color='darkblue', linewidth=2, 
+                   label=f'AUC = {roc_auc:.3f}')
+        ax_roc.plot([0, 1], [0, 1], 'k--', alpha=0.5)
+        ax_roc.set_xlabel('False Match Rate (FMR)')
+        ax_roc.set_ylabel('True Match Rate (TMR)')
+        ax_roc.set_title(f'ROC Curve - Gap {time_gap}y')
+        ax_roc.legend()
+        ax_roc.grid(True, alpha=0.3)
+        
+        # Calculate and display EER
+        eer_idx = np.argmin(np.abs(fpr - (1 - tpr)))
+        eer = (fpr[eer_idx] + (1 - tpr[eer_idx])) / 2
+        ax_roc.plot(eer, 1-eer, 'ro', markersize=8, label=f'EER = {eer:.3f}')
+        ax_roc.legend()
+    
+    # Remove empty subplots if odd number of time gaps
+    if n_gaps % 2 == 1:
+        for col in range(2, 4):
+            axes[-1, col].axis('off')
+    
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved similarity distribution plot to {save_path}")
+    
+    plt.show()
+    
+    return fig
 
 
 def visualize_degradation_rates(results_dict: Dict, save_path: str = None):
