@@ -42,7 +42,7 @@
 } %Affichage de l'image au top de la page
 \rhead{\nouppercase{\leftmark}}
 \rfoot{\thepage}
-\cfoot{IT002 - \textbf{\titre}}
+\cfoot{CS331 - \textbf{\titre}}
 \lfoot{\UE}
 }
 
