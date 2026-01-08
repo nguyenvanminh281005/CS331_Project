@@ -1,0 +1,70 @@
+\chapter{Phương pháp}
+\section{MagFace}
+
+Khác với ArcFace sử dụng margin cố định, \textbf{MagFace} đề xuất một hàm loss linh hoạt dựa trên độ lớn (magnitude) của vector đặc trưng để đánh giá chất lượng ảnh.
+
+\begin{itemize}
+    \item \textbf{Cơ chế:} Các ảnh rõ nét (high-quality) sẽ được đẩy về gần tâm của class với magnitude lớn, trong khi các ảnh nhiễu hoặc biến đổi mạnh do tuổi tác sẽ có magnitude nhỏ hơn.
+    \item \textbf{Ý nghĩa:} Điều này giúp mô hình nhận diện tốt hơn các mẫu dữ liệu khó (unconstrained conditions) thường gặp trong bài toán biến đổi theo thời gian.
+\end{itemize}
+
+\subsection{Cơ chế chính: Magnitude-aware Mechanism}
+
+Cơ chế cốt lõi của MagFace dựa trên nguyên lý: \textbf{magnitude của feature vector phản ánh độ tin cậy} (confidence) của ảnh đầu vào. Cụ thể:
+
+\begin{itemize}
+    \item \textbf{Ảnh chất lượng cao} (rõ nét, ánh sáng tốt, không bị che khuất): Feature vector có magnitude lớn ($\|f\|$ lớn) và nằm gần class center trong embedding space. Điều này cho thấy mô hình tự tin về việc nhận diện.
+    
+    \item \textbf{Ảnh chất lượng thấp} (mờ, nhiễu, góc khó, che khuất, hoặc biến đổi do tuổi tác): Feature vector có magnitude nhỏ ($\|f\|$ nhỏ) và có thể nằm xa class center hơn. Điều này phản ánh sự không chắc chắn của mô hình.
+\end{itemize}
+
+Bằng cách điều chỉnh magnitude một cách động, MagFace cho phép mô hình học được một feature space mà tự nhiên phân tách các mẫu "dễ" và "khó", từ đó cải thiện robustness khi inference trên dữ liệu out-of-distribution và các trường hợp khuôn mặt biến đổi theo thời gian.
+
+\subsection{Loss Function của MagFace}
+
+MagFace sử dụng một adaptive margin function $m(a)$ phụ thuộc vào magnitude $a = \|f\|$ của feature vector. Loss function được định nghĩa như sau:
+
+\begin{equation}
+L_{MagFace} = -\frac{1}{N} \sum_{i=1}^{N} \log \frac{e^{s \cdot \cos(\theta_{y_i} + m(a_i))}}{e^{s \cdot \cos(\theta_{y_i} + m(a_i))} + \sum_{j \neq y_i} e^{s \cdot \cos\theta_j}}
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $N$: Số lượng mẫu trong batch
+    \item $s$: Scale parameter (thường là 64)
+    \item $\theta_{y_i}$: Góc giữa feature vector $f_i$ và class center $W_{y_i}$ của class đúng
+    \item $\theta_j$: Góc giữa $f_i$ và class center $W_j$ của các class khác
+    \item $a_i = \|f_i\|$: Magnitude của feature vector thứ $i$
+    \item $m(a_i)$: \textbf{Adaptive margin function}, điều chỉnh margin dựa trên magnitude
+\end{itemize}
+
+\subsection{Adaptive Margin Function $m(a)$}
+
+Điểm khác biệt chính của MagFace nằm ở hàm margin linh hoạt $m(a)$, được thiết kế để:
+\begin{itemize}
+    \item Áp dụng \textbf{margin lớn hơn} cho các ảnh chất lượng cao (magnitude lớn) để tăng tính phân biệt
+    \item Áp dụng \textbf{margin nhỏ hơn} cho các ảnh chất lượng thấp (magnitude nhỏ) để tránh over-penalize
+\end{itemize}
+
+Công thức của $m(a)$ thường có dạng:
+\begin{equation}
+m(a) = \begin{cases}
+m_{min} & \text{nếu } a < a_{min} \\
+\frac{m_{max} - m_{min}}{a_{max} - a_{min}} \cdot (a - a_{min}) + m_{min} & \text{nếu } a_{min} \leq a \leq a_{max} \\
+m_{max} & \text{nếu } a > a_{max}
+\end{cases}
+\end{equation}
+
+Trong đó $m_{min}$, $m_{max}$, $a_{min}$, $a_{max}$ là các hyperparameters cần được tinh chỉnh dựa trên đặc điểm của dataset.
+
+\subsection{Ưu điểm của MagFace so với ArcFace}
+
+\begin{enumerate}
+    \item \textbf{Khả năng xử lý dữ liệu nhiễu}: MagFace tự thích nghi với các mẫu có chất lượng khác nhau, phù hợp cho unconstrained environments.
+    
+    \item \textbf{Phân tách rõ ràng}: Tự động phân biệt giữa hard samples và easy samples thông qua magnitude, giúp training hiệu quả hơn.
+    
+    \item \textbf{Robustness cao hơn}: Khi test trên ảnh chất lượng thấp hoặc ảnh bị biến đổi do tuổi tác, MagFace cho kết quả ổn định hơn nhờ đã học được cách xử lý uncertainty.
+    
+    \item \textbf{Phù hợp cho Age-Invariant Face Recognition}: Khả năng điều chỉnh margin theo chất lượng ảnh giúp MagFace xử lý tốt hơn các trường hợp khuôn mặt thay đổi theo thời gian.
+\end{enumerate}
