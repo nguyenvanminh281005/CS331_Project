@@ -10,6 +10,7 @@
 \RequirePackage{siunitx} %Pour écrire avec la notation scientifique (Ex.: \num{2e+9})
 \RequirePackage{float} %Pour placement d'images
 \RequirePackage{graphicx} %Paquet pour insérer des images
+\RequirePackage[dvipsnames]{xcolor} % Màu sắc
 \RequirePackage[justification=centering]{caption} %Pour les légendes centralisées
 \RequirePackage{subcaption}
 \RequirePackage{wallpaper}
@@ -38,23 +39,34 @@
 \fancyheadoffset{1cm}
 \setlength{\headheight}{2cm}
 \lhead{
-        \includegraphics[scale=0.2]{./logos/uit.png}
+        \includegraphics[scale=0.1]{./logos/logo.png}
 } %Affichage de l'image au top de la page
 \rhead{\nouppercase{\leftmark}}
 \rfoot{\thepage}
-\cfoot{CS331 - \textbf{\titre}}
+\cfoot{\textbf{CS331} - \textbf{\titre}}
 \lfoot{\UE}
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyheadoffset{1cm}
+    \lhead{\includegraphics[scale=0.08]{./logos/logo.png}}
+    \rhead{\nouppercase{\leftmark}}
+    \rfoot{\thepage}
+    \cfoot{\textbf{CS331} - \textbf{\titre}}
+    \lfoot{\UE}
+}
 }
 
 \newcommand{\fairepagedegarde}{
 \begin{titlepage}
+\enlargethispage{1cm}
 
 \ThisLRCornerWallPaper{1}{./logos/background.png}
 	\centering %Centraliser le contenu
-	\includegraphics[scale=0.6]{./logos/uit.png}\par\vspace{1cm} 
-	{\fontsize{18}{18}\selectfont 
- VIETNAM NATIONAL UNIVERSITY HO CHI MINH CITY \\
- UNIVERSITY OF INFORMATION TECHNOLOGY
+	\vspace*{-3cm}
+	{\fontsize{13pt}{1}\selectfont \textbf{ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH}\\\textbf{TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN}}\\[2cm]
+	\includegraphics[scale=0.4]{./logos/uit.png}\par\vspace{1cm} 
+	{\fontsize{21}{18}\selectfont 
+ \textbf{BÁO CÁO ĐỒ ÁN CUỐI KỲ}
  
  \par}
 
@@ -62,23 +74,18 @@
 	{\scshape\Large \UE \\ \sujet \par} 
 	\vspace{1cm}
     \rule{\linewidth}{0.2 mm} \\[0.4 cm]
-	{\huge\bfseries \titre \par}
+	{\LARGE\bfseries\color{Blue} \titre \par}
     \rule{\linewidth}{0.2 mm} \\[1.5 cm]
-	\vspace{1cm}
+	\vspace{-0.5cm}
     
 	\begin{minipage}{0.5\textwidth}
-		\begin{flushleft} \large 
+		\begin{flushleft} \large
+		\emph{\textbf{Giảng viên :}} \\
+		 \enseignant \\[1cm]
 		\emph{\textbf{Sinh Viên :}}\\ 
         \eleves\\ 
 		\end{flushleft}
-	\end{minipage}
-	~
-	\begin{minipage}{0.4\textwidth}
-		\begin{flushright} \large
-		\emph{\textbf{Giảng viên :}} \\
-		 \enseignant \\
-		\end{flushright}
-	\end{minipage}\\[2cm]
+	\end{minipage}\\[1cm]
     
 	\vfill
 	{\large \today\par}
