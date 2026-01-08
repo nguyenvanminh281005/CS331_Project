@@ -68,3 +68,112 @@ Trong đó $m_{min}$, $m_{max}$, $a_{min}$, $a_{max}$ là các hyperparameters c
     
     \item \textbf{Phù hợp cho Age-Invariant Face Recognition}: Khả năng điều chỉnh margin theo chất lượng ảnh giúp MagFace xử lý tốt hơn các trường hợp khuôn mặt thay đổi theo thời gian.
 \end{enumerate}
+
+\section{Temporal Model: Đánh giá tính bền vững của đặc trưng}
+
+\subsection{Động lực nghiên cứu}
+
+Hầu hết các hệ thống Face Recognition hiện nay đạt hiệu năng cao trong \textbf{điều kiện chuẩn} (ảnh chụp gần thời điểm, môi trường kiểm soát). Tuy nhiên, trong thực tế, khuôn mặt con người thay đổi theo thời gian do nhiều yếu tố:
+
+\begin{itemize}
+    \item \textbf{Aging Effects}: Thay đổi tuổi tác (nếp nhăn, da chảy xệ, thay đổi hình dạng khuôn mặt)
+    \item \textbf{Appearance Variations}: Thay đổi ngoại hình (tóc, râu, trang điểm, kính, phụ kiện)
+    \item \textbf{Environmental Factors}: Điều kiện chụp khác nhau (lighting, camera quality, resolution)
+    \item \textbf{Health Conditions}: Bệnh lý, chấn thương, phẫu thuật thẩm mỹ
+\end{itemize}
+
+Điều này dẫn đến \textbf{khoảng trống nghiên cứu}: Làm thế nào để đánh giá và đảm bảo tính bền vững (robustness) của feature embedding khi đối mặt với biến đổi dài hạn?
+
+\subsection{Feature Invariance vs Feature Drift}
+
+Trong bối cảnh temporal analysis, chúng ta quan tâm đến hai khái niệm quan trọng:
+
+\subsubsection{Feature Invariance (Tính bất biến của đặc trưng)}
+
+\textbf{Feature Invariance} là khả năng của feature embedding duy trì sự tương đồng (similarity) cao giữa các ảnh của cùng một người qua thời gian, bất chấp sự thay đổi về tuổi tác hoặc ngoại hình.
+
+\begin{itemize}
+    \item \textbf{Ideal Goal}: Embedding vector $f_t$ tại thời điểm $t$ và $f_{t+\Delta t}$ tại thời điểm $t+\Delta t$ nên có cosine similarity cao: $\cos(f_t, f_{t+\Delta t}) \approx 1$
+    \item \textbf{Challenge}: Các đặc trưng như texture (kết cấu da), contour (đường viền khuôn mặt) thay đổi theo tuổi, làm giảm similarity
+    \item \textbf{Desired Features}: Các đặc trưng bất biến như geometric ratios (tỷ lệ hình học), eye shape (hình dạng mắt), nose structure (cấu trúc mũi)
+\end{itemize}
+
+\subsubsection{Feature Drift (Sự trôi dạt đặc trưng)}
+
+\textbf{Feature Drift} là hiện tượng embedding vector của cùng một người dần \textit{dịch chuyển} trong embedding space theo thời gian, xa dần khỏi vị trí ban đầu.
+
+\begin{itemize}
+    \item \textbf{Quantification}: Đo lường bằng Euclidean distance hoặc cosine distance: $d(f_t, f_{t+\Delta t}) = \|f_t - f_{t+\Delta t}\|$
+    \item \textbf{Drift Rate}: Tốc độ trôi dạt có thể được mô hình hóa: $\text{drift\_rate} = \frac{d(f_t, f_{t+\Delta t})}{\Delta t}$
+    \item \textbf{Impact}: Feature drift cao dẫn đến False Rejection Rate (FRR) tăng trong long-term verification
+\end{itemize}
+
+\subsection{Temporal Stability Metrics}
+
+Để đánh giá tính bền vững của feature representation theo thời gian, nhóm đề xuất các metrics sau:
+
+\subsubsection{Intra-Subject Stability Score (ISS)}
+
+Đo lường mức độ ổn định của feature embedding của cùng một người qua các time intervals:
+
+\begin{equation}
+\text{ISS}(i, \Delta t) = \frac{1}{|P_i^{\Delta t}|} \sum_{(f_a, f_b) \in P_i^{\Delta t}} \cos(f_a, f_b)
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $P_i^{\Delta t}$: Tập các cặp ảnh của người thứ $i$ với khoảng cách thời gian $\Delta t$
+    \item $\cos(f_a, f_b)$: Cosine similarity giữa hai feature vectors
+    \item ISS cao ($\approx 1$) chỉ ra feature invariance tốt
+\end{itemize}
+
+\subsubsection{Temporal Decay Rate (TDR)}
+
+Đo lường tốc độ suy giảm similarity theo thời gian:
+
+\begin{equation}
+\text{TDR} = -\frac{d(\text{ISS})}{d(\Delta t)} = -\frac{\text{ISS}(\Delta t_2) - \text{ISS}(\Delta t_1)}{\Delta t_2 - \Delta t_1}
+\end{equation}
+
+\begin{itemize}
+    \item TDR thấp ($\approx 0$): Feature bền vững, ít bị ảnh hưởng bởi thời gian
+    \item TDR cao: Feature deteriorate nhanh theo thời gian
+\end{itemize}
+
+\subsubsection{Feature Drift Magnitude (FDM)}
+
+Đo lường độ lệch trung bình của feature vector so với baseline (thời điểm ban đầu):
+
+\begin{equation}
+\text{FDM}(\Delta t) = \frac{1}{N} \sum_{i=1}^{N} \|f_i^{t_0} - f_i^{t_0 + \Delta t}\|_2
+\end{equation}
+
+Trong đó $f_i^{t_0}$ là feature tại thời điểm baseline, $f_i^{t_0 + \Delta t}$ là feature sau khoảng thời gian $\Delta t$.
+
+\subsection{Phương pháp đánh giá Temporal Robustness}
+
+nhóm áp dụng protocol sau để đánh giá temporal robustness:
+
+\begin{enumerate}
+    \item \textbf{Temporal Splitting}: Chia dataset thành các temporal bins dựa trên khoảng cách thời gian (0-2 năm, 2-5 năm, 5-10 năm, >10 năm)
+    
+    \item \textbf{Pairwise Evaluation}: Với mỗi identity, tạo positive pairs từ ảnh ở các temporal bins khác nhau và negative pairs từ ảnh của người khác
+    
+    \item \textbf{Metrics Computation}: Tính toán ISS, TDR, FDM cho từng temporal bin và phân tích xu hướng
+    
+    \item \textbf{Age-Stratified Analysis}: Phân tích riêng cho từng nhóm tuổi (young: 16-29, middle: 30-49, senior: 50-70) vì aging effects khác nhau theo độ tuổi
+    
+    \item \textbf{Cross-Temporal Verification}: Đánh giá accuracy khi gallery set và probe set cách nhau khoảng thời gian cụ thể
+\end{enumerate}
+
+\subsection{Ứng dụng thực tế}
+
+Temporal Model có ý nghĩa quan trọng trong nhiều lĩnh vực:
+
+\begin{itemize}
+    \item \textbf{Forensics}: Truy vấn nghi phạm trong video archive từ nhiều năm trước
+    \item \textbf{Long-term Surveillance}: Hệ thống giám sát an ninh cần nhận diện người sau nhiều năm
+    \item \textbf{Missing Person Identification}: Tìm kiếm người mất tích với ảnh cũ (age progression)
+    \item \textbf{Movie Character Tracking}: Truy vấn nhân vật trong phim dài tập với các cảnh quay cách xa nhau
+    \item \textbf{Biometric Authentication}: Hệ thống xác thực dài hạn (passport, ID card valid 10 years)
+\end{itemize}

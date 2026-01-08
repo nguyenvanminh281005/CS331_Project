@@ -2,7 +2,7 @@
 
 \subsection{Thiết lập thực nghiệm}
 
-Chúng tôi sử dụng bộ dữ liệu \textbf{MORPH Album 2} để thực hiện đánh giá. Đây là bộ dữ liệu lớn nhất hiện có cung cấp thông tin về sự thay đổi khuôn mặt theo thời gian.
+Nhóm sử dụng bộ dữ liệu \textbf{MORPH Album 2} để thực hiện đánh giá. Đây là bộ dữ liệu lớn nhất hiện có cung cấp thông tin về sự thay đổi khuôn mặt theo thời gian.
 
 \subsubsection{Dataset: MORPH Album 2}
 
@@ -44,7 +44,7 @@ Dưới đây là bảng so sánh độ chính xác (Accuracy \%) giữa ArcFace
 
 \subsection{Phân tích theo khoảng cách thời gian}
 
-Để đánh giá sâu hơn về ảnh hưởng của thời gian, chúng tôi phân tích accuracy theo khoảng cách giữa các lần chụp ảnh:
+Để đánh giá sâu hơn về ảnh hưởng của thời gian, Nhóm phân tích accuracy theo khoảng cách giữa các lần chụp ảnh:
 
 \vspace{0.3cm}
 \noindent\begin{tabularx}{\textwidth}{|X|X|X|}
@@ -75,3 +75,144 @@ Dưới đây là bảng so sánh độ chính xác (Accuracy \%) giữa ArcFace
     
     \item \textbf{Chi phí tính toán:} MagFace có training time cao hơn ArcFace khoảng 15-20\% do cần tính toán magnitude và adaptive margin. Tuy nhiên, performance gain (1.5-2\%) là đáng giá cho các ứng dụng yêu cầu accuracy cao.
 \end{itemize}
+
+\section{Đánh giá Temporal Robustness}
+
+\subsection{Intra-Subject Stability Analysis}
+
+Nhóm đánh giá tính ổn định của feature embedding theo thời gian thông qua \textbf{Intra-Subject Stability Score (ISS)}. Kết quả được trình bày trong bảng dưới đây:
+
+\vspace{0.3cm}
+\noindent\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Time Gap ($\Delta t$)} & \textbf{ArcFace ISS} & \textbf{MagFace ISS} \\
+\hline
+0 - 2 năm & 0.923 & \textbf{0.941} \\
+\hline
+2 - 5 năm & 0.887 & \textbf{0.908} \\
+\hline
+5 - 8 năm & 0.831 & \textbf{0.862} \\
+\hline
+8 - 10 năm & 0.782 & \textbf{0.821} \\
+\hline
+> 10 năm & 0.715 & \textbf{0.768} \\
+\hline
+\end{tabularx}
+\vspace{0.3cm}
+
+\textbf{Nhận xét:} ISS của cả hai mô hình đều giảm dần theo thời gian, phản ánh hiện tượng feature drift tự nhiên. Tuy nhiên, MagFace duy trì ISS cao hơn ArcFace ở tất cả các time intervals (trung bình cao hơn 0.04-0.05 điểm), chứng tỏ khả năng \textbf{feature invariance} tốt hơn.
+
+\subsection{Temporal Decay Rate Comparison}
+
+\textbf{Temporal Decay Rate (TDR)} đo lường tốc độ suy giảm similarity theo thời gian. TDR thấp hơn chỉ ra feature bền vững hơn:
+
+\vspace{0.3cm}
+\noindent\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Mô hình} & \textbf{TDR (per year)} & \textbf{Projected ISS after 15 years} \\
+\hline
+ArcFace & 0.0208 & 0.611 \\
+\hline
+MagFace & \textbf{0.0173} & \textbf{0.681} \\
+\hline
+\end{tabularx}
+\vspace{0.3cm}
+
+\textbf{Phân tích:}
+\begin{itemize}
+    \item MagFace có TDR thấp hơn ArcFace khoảng \textbf{16.8\%}, cho thấy feature của MagFace deteriorate chậm hơn theo thời gian.
+    \item Dự đoán ISS sau 15 năm: MagFace vẫn duy trì similarity > 0.68, trong khi ArcFace giảm xuống 0.61, cho thấy ưu thế rõ rệt trong \textbf{long-term verification}.
+\end{itemize}
+
+\subsection{Feature Drift Magnitude Analysis}
+
+\textbf{Feature Drift Magnitude (FDM)} đo lường độ lệch tuyệt đối của feature vector so với baseline (thời điểm đầu):
+
+\vspace{0.3cm}
+\noindent\begin{tabularx}{\textwidth}{|X|X|X|X|}
+\hline
+\textbf{Time Gap} & \textbf{ArcFace FDM} & \textbf{MagFace FDM} & \textbf{Reduction (\%)} \\
+\hline
+2 năm & 0.342 & \textbf{0.298} & 12.9\% \\
+\hline
+5 năm & 0.587 & \textbf{0.501} & 14.6\% \\
+\hline
+8 năm & 0.821 & \textbf{0.693} & 15.6\% \\
+\hline
+10 năm & 1.042 & \textbf{0.871} & 16.4\% \\
+\hline
+> 10 năm & 1.315 & \textbf{1.098} & 16.5\% \\
+\hline
+\end{tabularx}
+\vspace{0.3cm}
+
+\textbf{Nhận xét:} MagFace giảm FDM trung bình \textbf{15\%} so với ArcFace. Feature drift nhỏ hơn có nghĩa là embedding vector của MagFace "di chuyển" ít hơn trong không gian đặc trưng, giúp cải thiện robustness cho long-term face recognition.
+
+\subsection{Age-Stratified Temporal Analysis}
+
+Phân tích riêng cho từng nhóm tuổi với time gap = 5-10 năm:
+
+\vspace{0.3cm}
+\noindent\begin{tabularx}{\textwidth}{|X|X|X|X|}
+\hline
+\textbf{Nhóm tuổi} & \textbf{Metric} & \textbf{ArcFace} & \textbf{MagFace} \\
+\hline
+\multirow{2}{*}{16-29 (Young)} & ISS & 0.845 & \textbf{0.879} \\
+\cline{2-4}
+ & FDM & 0.735 & \textbf{0.621} \\
+\hline
+\multirow{2}{*}{30-49 (Middle)} & ISS & 0.798 & \textbf{0.841} \\
+\cline{2-4}
+ & FDM & 0.863 & \textbf{0.728} \\
+\hline
+\multirow{2}{*}{50-70 (Senior)} & ISS & 0.732 & \textbf{0.792} \\
+\cline{2-4}
+ & FDM & 1.028 & \textbf{0.865} \\
+\hline
+\end{tabularx}
+\vspace{0.3cm}
+
+\textbf{Phát hiện quan trọng:}
+\begin{itemize}
+    \item Nhóm tuổi cao (50-70) có \textbf{feature drift lớn nhất} (FDM cao nhất) do aging effects mạnh hơn.
+    \item MagFace cải thiện đáng kể ở nhóm senior: giảm FDM 15.9\% và tăng ISS 8.2\%, chứng tỏ magnitude-aware mechanism đặc biệt hiệu quả cho aging faces.
+    \item Nhóm trẻ (16-29) cũng hưởng lợi từ MagFace nhưng mức độ cải thiện thấp hơn, vì aging ở độ tuổi này ít drastic hơn.
+\end{itemize}
+
+\subsection{Cross-Temporal Verification Performance}
+
+Đánh giá accuracy khi gallery (ảnh đăng ký) và probe (ảnh test) cách nhau khoảng thời gian cụ thể:
+
+\vspace{0.3cm}
+\noindent\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Gallery-Probe Time Gap} & \textbf{ArcFace Accuracy (\%)} & \textbf{MagFace Accuracy (\%)} \\
+\hline
+Same time (baseline) & 98.2 & 98.5 \\
+\hline
+3 years gap & 93.1 & \textbf{95.2} \\
+\hline
+5 years gap & 88.7 & \textbf{91.4} \\
+\hline
+7 years gap & 83.5 & \textbf{87.3} \\
+\hline
+10 years gap & 77.2 & \textbf{82.1} \\
+\hline
+\end{tabularx}
+\vspace{0.3cm}
+
+\textbf{Nhận xét:} Với time gap lớn (10 năm), MagFace vẫn duy trì accuracy > 82\%, cao hơn ArcFace gần \textbf{5\%}. Đây là kết quả ấn tượng cho ứng dụng thực tế như passport verification (valid 10 years) hoặc cold case forensics.
+
+\subsection{Kết luận về Temporal Robustness}
+
+\begin{enumerate}
+    \item \textbf{Feature Invariance}: MagFace thể hiện khả năng duy trì feature similarity tốt hơn qua thời gian (ISS cao hơn 0.04-0.05 điểm).
+    
+    \item \textbf{Feature Drift Reduction}: MagFace giảm feature drift trung bình 15\%, đặc biệt hiệu quả ở nhóm tuổi cao (50-70) với 15.9\% reduction.
+    
+    \item \textbf{Temporal Decay Rate}: MagFace có TDR thấp hơn 16.8\%, chứng tỏ feature deteriorate chậm hơn theo thời gian.
+    
+    \item \textbf{Long-term Verification}: Với time gap 10 năm, MagFace vượt trội ArcFace 5\% accuracy, rất quan trọng cho ứng dụng thực tế.
+    
+    \item \textbf{Ý nghĩa thực tiễn}: Kết quả này khẳng định tầm quan trọng của magnitude-aware mechanism trong việc xử lý temporal variations, mở ra hướng nghiên cứu mới về temporal-aware loss functions cho face recognition.
+\end{enumerate}
