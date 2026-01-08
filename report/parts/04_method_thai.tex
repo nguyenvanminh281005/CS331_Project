@@ -1,0 +1,52 @@
+\chapter{Phương pháp}
+\section{Phương pháp ArcFace (Additive Angular Margin Loss)}
+
+Trong nghiên cứu này, chúng tôi lựa chọn **ArcFace** làm một trong những mô hình cơ sở (baseline) để đánh giá. ArcFace là một hàm mất mát (loss function) tiên tiến, được thiết kế nhằm tối ưu hóa khả năng phân biệt của các đặc trưng khuôn mặt trong không gian vector (Embedding Space).
+
+\subsection{Cơ chế hoạt động}
+Khác với hàm Softmax truyền thống, ArcFace cải thiện khả năng phân lớp bằng cách tác động trực tiếp lên góc giữa các vector đặc trưng trong không gian hình học. Cơ chế này bao gồm hai bước chính:
+
+\begin{enumerate}
+    \item \textbf{Chiếu lên siêu cầu (Hypersphere Projection):} 
+    ArcFace thực hiện chuẩn hóa L2 (L2 normalization) đối với cả vector đặc trưng đầu ra $x_i$ và vector trọng số của lớp $W_{y_i}$. Việc này cố định độ dài của chúng bằng 1, ép các đặc trưng phân bố trên bề mặt của một siêu cầu có bán kính $s$. Khi đó, mức độ tương đồng giữa hai khuôn mặt chỉ còn phụ thuộc vào góc $\theta$ giữa chúng.
+    
+    \item \textbf{Cộng biên góc (Additive Angular Margin):} 
+    Đây là cải tiến cốt lõi của ArcFace. Thay vì chỉ sử dụng $\cos(\theta_{y_i})$ để tính logit, ArcFace cộng thêm một giá trị biên góc $m$ (margin) trực tiếp vào bên trong hàm cosin. Công thức tính toán logit chuyển từ $\cos(\theta_{y_i})$ thành $\cos(\theta_{y_i} + m)$.
+\end{enumerate}
+
+\subsection{Công thức hàm Loss}
+Hàm mất mát tổng quát của ArcFace được định nghĩa như sau:
+
+\begin{equation}
+    L_{ArcFace} = -\frac{1}{N} \sum_{i=1}^{N} \log \frac{e^{s \cdot \cos(\theta_{y_i} + m)}}{e^{s \cdot \cos(\theta_{y_i} + m)} + \sum_{j \neq y_i} e^{s \cdot \cos(\theta_j)}}
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $N$: Số lượng mẫu (batch size).
+    \item $y_i$: Nhãn đúng (ground truth) của mẫu thứ $i$.
+    \item $\theta_{y_i}$: Góc giữa vector đặc trưng $x_i$ và tâm của lớp đúng $W_{y_i}$.
+    \item $\theta_j$: Góc giữa vector đặc trưng $x_i$ và tâm của các lớp sai $W_j$.
+    \item $s$: Tham số tỉ lệ (scale parameter), thường được thiết lập là 64 để phù hợp với độ lớn của gradient.
+    \item $m$: Tham số biên (margin parameter), thường được thiết lập là 0.5.
+\end{itemize}
+
+\textbf{Ý nghĩa hình học:} Việc cộng thêm $m$ giúp tối ưu hóa trực tiếp khoảng cách trắc địa (geodesic distance) trên mặt cầu. Điều này ép buộc mô hình phải học được các đặc trưng sao cho các khuôn mặt của cùng một người (intra-class) co cụm chặt hơn, đồng thời đẩy các khuôn mặt của những người khác nhau (inter-class) ra xa nhau một khoảng góc tối thiểu là $m$.
+
+\subsection{Ưu và nhược điểm}
+Trong bối cảnh bài toán đánh giá ảnh hưởng của độ tuổi và thời gian (Temporal Robustness), ArcFace thể hiện những đặc điểm sau:
+
+\subsubsection{Ưu điểm (Pros)}
+\begin{itemize}
+    \item \textbf{Độ chính xác nền tảng cao:} ArcFace tạo ra các đặc trưng có khả năng phân biệt rất tốt. Trong các thực nghiệm của chúng tôi, mô hình này đạt độ chính xác (Accuracy) xấp xỉ 90-95\% và chỉ số AUC $\approx 0.95$ trên các nhóm tuổi trẻ (16-29) và trung niên (30-49).
+    \item \textbf{Hiệu quả trên dữ liệu chuẩn:} Đối với các cặp ảnh có khoảng cách thời gian ngắn (0-2 năm) hoặc thuộc nhóm tuổi trẻ, ArcFace hoạt động ổn định và có hiệu năng cạnh tranh.
+    \item \textbf{Dễ triển khai:} Mô hình có cấu trúc đơn giản, dễ dàng tích hợp vào các kiến trúc mạng (Backbone) phổ biến như ResNet mà không làm tăng chi phí tính toán đáng kể.
+\end{itemize}
+
+\subsubsection{Nhược điểm (Cons)}
+Nhược điểm lớn nhất của ArcFace đối với bài toán lão hóa nằm ở cơ chế \textbf{Biên cố định (Fixed Margin)}:
+\begin{itemize}
+    \item ArcFace áp dụng cùng một biên $m$ cho tất cả các mẫu, bất kể đó là mẫu dễ (ảnh rõ nét, trẻ trung) hay mẫu khó (ảnh mờ, người già, thay đổi lớn do lão hóa).
+    \item Trong thực tế, ảnh khuôn mặt người già hoặc ảnh chụp cách nhau nhiều năm (6-10 năm) thường bị coi là "mẫu khó" (hard samples) với độ tin cậy thấp. Việc ép buộc một biên $m$ cố định khiến mô hình gặp khó khăn trong việc hội tụ đối với các trường hợp này, dẫn đến sự suy giảm độ chính xác rõ rệt ở nhóm người cao tuổi (Senior: 50-70 tuổi) và khi khoảng cách thời gian (Time Gap) tăng lên. 
+    \item Khác với MagFace, ArcFace không có cơ chế tự động điều chỉnh biên dựa trên chất lượng ảnh, làm giảm tính bền vững (robustness) trước các biến đổi sinh học phức tạp của khuôn mặt.
+\end{itemize}
