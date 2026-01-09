@@ -1,10 +1,10 @@
-\section{Kết quả thực nghiệm}
+\chapter{Kết quả thực nghiệm}
 
-\subsection{Thiết lập thực nghiệm}
+\section{Thiết lập thực nghiệm}
 
 Nhóm sử dụng bộ dữ liệu \textbf{MORPH Album 2} để thực hiện đánh giá. Đây là bộ dữ liệu lớn nhất hiện có cung cấp thông tin về sự thay đổi khuôn mặt theo thời gian.
 
-\subsubsection{Dataset: MORPH Album 2}
+\subsection{Dataset: MORPH Album 2}
 
 \textbf{MORPH Album 2} là bộ dataset chuẩn cho bài toán Age-Invariant Face Recognition, bao gồm:
 
@@ -15,7 +15,7 @@ Nhóm sử dụng bộ dữ liệu \textbf{MORPH Album 2} để thực hiện đ
     \item Các ảnh được chụp trong điều kiện tương đối kiểm soát (studio setting), nhưng vẫn có sự thay đổi về lighting, expression, và aging effects.
 \end{itemize}
 
-\subsubsection{Metrics}
+\subsection{Metrics}
 
 Các độ đo được sử dụng:
 
@@ -25,7 +25,7 @@ Các độ đo được sử dụng:
     \item \textbf{Performance vs Time Gap}: Đánh giá sự sụt giảm accuracy theo khoảng cách thời gian giữa các lần chụp ảnh.
 \end{itemize}
 
-\subsection{Bảng so sánh hiệu năng}
+\section{Bảng so sánh hiệu năng}
 
 Dưới đây là bảng so sánh độ chính xác (Accuracy \%) giữa ArcFace và MagFace trên các nhóm tuổi, sử dụng cùng backbone network (ResNet-100) và cùng training protocol:
 
@@ -42,7 +42,7 @@ Dưới đây là bảng so sánh độ chính xác (Accuracy \%) giữa ArcFace
 
 \textbf{Nhận xét:} MagFace vượt trội hơn ArcFace trên tất cả các nhóm tuổi, đặc biệt là nhóm tuổi cao (50-70) với mức cải thiện khoảng 1.5\%. Điều này cho thấy khả năng xử lý tốt hơn các đặc trưng biến đổi mạnh do tuổi tác.
 
-\subsection{Phân tích theo khoảng cách thời gian}
+\section{Phân tích theo khoảng cách thời gian}
 
 Để đánh giá sâu hơn về ảnh hưởng của thời gian, Nhóm phân tích accuracy theo khoảng cách giữa các lần chụp ảnh:
 
@@ -66,7 +66,7 @@ Dưới đây là bảng so sánh độ chính xác (Accuracy \%) giữa ArcFace
 
 \textbf{Nhận xét:} Cả hai mô hình đều có xu hướng giảm độ chính xác khi khoảng cách thời gian tăng lên, đặc biệt là sau mốc 10 năm. Tuy nhiên, MagFace cho thấy độ sụt giảm ít hơn (trung bình 1.5-2.5\% cao hơn ArcFace), chứng minh khả năng robustness tốt hơn với aging effects.
 
-\subsection{Đánh giá và Nhận xét}
+\section{Đánh giá và Nhận xét}
 
 \begin{itemize}
     \item \textbf{Ưu điểm:} MagFace cho thấy sự ổn định hơn ArcFace đối với nhóm tuổi cao (50-70) nhờ khả năng xử lý các đặc trưng biến đổi mạnh. Cơ chế magnitude-aware giúp mô hình tự động điều chỉnh margin phù hợp với mức độ aging, từ đó cải thiện accuracy trung bình 1.5-2\% so với ArcFace.
