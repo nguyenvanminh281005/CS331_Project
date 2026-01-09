@@ -4,7 +4,7 @@
 
 \subsection{Thách thức từ sự thay đổi sinh học theo thời gian}
 Trong những năm gần đây, các hệ thống nhận diện khuôn mặt (Face Recognition - FR) đã đạt được những bước tiến vượt bậc, hoạt động hiệu quả trong các điều kiện tiêu chuẩn với ảnh chụp gần thời điểm xác thực. Tuy nhiên, hiệu năng của các hệ thống này vẫn gặp phải sự suy giảm đáng kể khi đối mặt với các dữ liệu khuôn mặt thay đổi theo thời gian dài hạn.
-
+\\
 Về mặt sinh học, khuôn mặt con người là một thực thể thay đổi liên tục. Quá trình lão hóa làm biến đổi cấu trúc xương, cơ và bề mặt da, dẫn đến sự thay đổi của các đặc trưng thị giác cốt lõi. Đây là một thách thức lớn đối với các thuật toán nhận diện, bởi các đặc trưng này cần phải đủ tính "bất biến" (invariant) để nhận diện chính xác qua nhiều năm. Tuy nhiên, thực tế thường xảy ra hiện tượng "trôi đặc trưng" (feature drift), khiến khoảng cách giữa các vector đặc trưng của cùng một người tăng lên theo thời gian, làm giảm độ chính xác của mô hình.
 \begin{figure}[H] 
     \centering
@@ -13,11 +13,6 @@ Về mặt sinh học, khuôn mặt con người là một thực thể thay đ�
 \end{figure}
 
 Ngoài ra, sự thiếu hụt các bộ dữ liệu huấn luyện cân bằng, với tỷ lệ ảnh người lớn tuổi thường rất thấp, đặt ra câu hỏi lớn: Liệu sự suy giảm độ chính xác là do giới hạn bản chất của thuật toán hay do sự thiên lệch của dữ liệu? Việc nghiên cứu vấn đề này giúp làm sáng tỏ giới hạn của các mô hình State-of-the-art (SOTA) hiện nay.
-
-\subsection{Nghịch lý của các mô hình Deep Learning hiện đại}
-Một động lực quan trọng khác để thực hiện đề tài này xuất phát từ sự thay đổi quan điểm trong cộng đồng nghiên cứu. Trước kỷ nguyên Deep Learning, giả thuyết phổ biến cho rằng người già dễ nhận diện hơn người trẻ do các đặc trưng khuôn mặt đã ổn định. Tuy nhiên, với sự ra đời của các mô hình Deep CNN hiện đại (như ArcFace, VGG), các nghiên cứu thực nghiệm lại chỉ ra một nghịch lý: độ chính xác nhận diện ở nhóm người già thấp hơn so với người trẻ.
-
-Nguyên nhân chính được xác định là do sự phân bố của dữ liệu giả mạo (impostor distribution) ở người già có xu hướng chồng lấn nhiều hơn, khiến mô hình dễ nhầm lẫn giữa hai người già khác nhau. Việc kiểm chứng và phân tích nghịch lý này chính là lý do cốt lõi để thực hiện đề tài, nhằm đánh giá xem các mô hình hiện đại thực sự "hiểu" khuôn mặt lão hóa như thế nào.
 
 \section{Tầm quan trọng của bài toán}
 
