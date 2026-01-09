@@ -1,0 +1,591 @@
+THỊ GIÁC MÁY TÍNH NÂNG CAO
+CS331.Q11.KHTN
+
+ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH
+TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN
+KHOA KHOA HỌC MÁY TÍNH
+
+BÁO CÁO ĐỒ ÁN CUỐI KÌ
+Nhập môn Thị giác Máy tính Nâng cao - CS331.Q11.KHTN
+
+ẢNH HƯỞNG CỦA ĐỘ TUỔI ĐẾN ĐỘ CHÍNH XÁC
+TRONG NHẬN DIỆN KHUÔN MẶT
+Giảng viên hướng dẫn: TS. Mai Tiến Dũng
+Sinh viên thực hiện:
+Nguyễn Văn Minh - 23520945
+Nguyễn Văn Hồng Thái - 23521418
+
+Nội dung
+1
+
+Giới thiệu đồ án
+
+4
+
+Kết quả thực nghiệm
+
+2
+
+Phát biểu bài toán
+
+5
+
+Đánh giá - Nhận xét
+
+3
+
+Phương pháp thực hiện
+
+6
+
+Tài liệu tham khảo
+Trang 1
+
+1
+
+Giới thiệu đồ án
+
+Các hệ thống nhận diện khuôn mặt (Face Recognition – FR) được sử dụng rộng rãi trong an
+ninh, giám sát, kiểm soát truy cập, thiết bị di động và nhiều ứng dụng dân sự.
+
+Trang 2
+
+1
+
+Giới thiệu đồ án
+
+Tuy nhiên, hiệu quả của các hệ thống này chịu tác động bởi nhiều yếu tố sinh học của con
+người như giới tính, chủng tộc, ánh sáng, biểu cảm và đặc biệt là độ tuổi (Age).
+
+FR Accuracy
+
+Trang 3
+
+1
+
+Giới thiệu đồ án
+
+Câu hỏi đặt ra:
+
+Liệu độ chính xác của nhận diện khuôn mặt có thay đổi
+khi con người thay đổi tuổi tác ?
+Về mặt sinh học, khuôn mặt thay đổi theo tuổi — từ trẻ em, thanh thiếu niên, người trưởng thành
+đến người lớn tuổi. Những biến đổi này có thể ảnh hưởng mạnh đến độ ổn định đặc trưng khuôn
+mặt, dẫn đến sai lệch hoặc giảm độ chính xác trong các hệ thống FR hiện đại.
+
+Trang 4
+
+1
+
+Giới thiệu đồ án
+
+Xác định vấn đề:
+Đánh giá mức độ ảnh hưởng của độ tuổi đến độ chính xác của các mô hình nhận diện khuôn
+mặt hiện đại (Deep Face Recognition).
+
+Mục tiêu:
+Phân chia dữ liệu khuôn mặt theo 3 nhóm, Sau đó đo lường hiệu suất nhận diện (Accuracy)
+của các mô hình FR trên từng nhóm tuổi.
+Nhóm 1 (16- 29 tuổi)
+Nhóm 2 (30- 49 tuổi)
+Nhóm 3 (50- 70 tuổi)
+Phân chia dữ liệu thành các cặp cách nhau một khoảng thời gian: 2 năm, 4 năm, 6 năm, 8
+năm, 10 năm. Khảo sát để biết được thời gian ảnh hưởng như thế nào tới độ chính xác khi
+nhận diện
+Trang 5
+
+1
+
+Giới thiệu đồ án
+
+Tầm quan trọng của đồ án
+Tuổi tác là yếu tố sinh học thay đổi theo thời gian, làm khuôn mặt biến đổi đáng kể. Hiểu rõ
+mức độ ảnh hưởng giúp cải thiện các hệ thống FR trong thực tế.
+Nhiều ứng dụng quan trọng yêu cầu hệ thống phải ổn định theo tuổi, như kiểm soát an ninh,
+giám sát, xác thực danh tính, thiết bị di động. Nếu FR hoạt động kém trên một nhóm tuổi nào
+đó, có thể gây ra lỗi nghiêm trọng.
+Kết quả nghiên cứu giúp đánh giá độ bền vững (robustness) của các mô hình phổ biến như
+ArcFace và MagFace trước sự thay đổi theo thời gian.
+Đóng góp thiết thực: cung cấp dữ liệu, biểu đồ và insight giúp cộng đồng hiểu rõ hơn về nhược
+điểm tiềm ẩn của FR, từ đó đề xuất mô hình và dataset tốt hơn trong tương lai.
+
+Trang 6
+
+2 Phát biểu bài toán
+Input
+Một kho ảnh chứa ảnh của nhiều người, những người này có ảnh ở những độ tuổi khác nhau.
+Khi đưa vào model Input là một cặp ảnh khuôn mặt đã căn chỉnh (aligned face pair).
+Mỗi cặp được phân loại theo:
+Loại cặp: Genuine (cùng người) hoặc Impostor (khác người).
+Nhóm tuổi: cả hai ảnh trong cặp có độ tuổi dựa trên nhóm, hoặc khoảng cách năm.
+
+Output
+Mô hình nhận diện xử lý cặp ảnh và trả về Similarity Score, dùng để đánh giá hiệu năng.
+
+Trang 7
+
+2 Phát biểu bài toán
+Input
+
+19 tuổi
+
+32 tuổi
+
+Output
+
+19 tuổi
+
+17 tuổi
+
+19 tuổi
+
+17 tuổi
+
+19 tuổi
+
+32 tuổi
+
+Dataset
+
+FR
+MODEL
+
+Similarity
+Score
+
+...
+66 tuổi
+
+66 tuổi
+
+Trang 8
+
+3
+
+Phương pháp sử dụng
+
+Tổng quan:
+
+Nhóm thiết lập dataset thành các cặp, sau đó sử dụng các model Arcface, Magface
+để kiểm thử tính bền vững của các đặc trưng thông qua:
+Cosine similarity
+Biểu đồ biến thiên score của hàng ngàn ảnh
+Từ đó phân tích, đánh giá.
+
+Trang 9
+
+3
+
+Phương pháp sử dụng
+
+3.1 Arcface
+
+Trang 10
+
+3
+
+Phương pháp sử dụng
+
+3.1 ArcFace
+
+Phương pháp dùng Arcface gồm 3 thành phần chính:
+Backbone Network: ResNet-like feature extractor
+Embedding Layer: Tạo feature embeddings
+ArcFace Margin: Additive angular margin loss
+Tham số model:
+Total parameters: ~11M
+Embedding size: 512 dimensions
+Input size: 112x112x3
+Trang 11
+
+3
+
+Phương pháp sử dụng
+
+3.1.1 Backbone Network (Feature Extractor)
+
+Input (3, 112, 112)
+Initial Conv: 3 64 channels với kernel 3x3
+4 ResNet Layers:
+Layer1: 64 64 (2 blocks, stride=2) 56x56
+Layer2: 64 128 (2 blocks, stride=2) 28x28
+Layer3: 128 256 (2 blocks, stride=2) 14x14
+Layer4: 256 512 (2 blocks, stride=2) 7x7
+Global Average Pooling: 7x7 1x1
+Final FC: 512 embedding_size (512)
+
+→
+→
+→
+→
+→
+→
+
+→
+
+→
+→
+→
+→
+
+Trang 12
+
+3
+
+Phương pháp sử dụng
+
+3.1.2 ArcMarginProduct (ArcFace Loss)
+
+Tham số quan trọng:
+: scale parameter (64)
+: margin parameter (0.5)
+:góc giữa embedding và center class y
+
+Trang 13
+
+3
+
+Phương pháp sử dụng
+
+3.1.3 ResNetBlock
+3.1.4 Tổng quan luồng xử lý
+Training Mode (có labels):
+Input Backbone Embeddings
+Return: (logits, embeddings)
+Inference Mode (không có labels):
+Input Backbone Embeddings
+Return: normalized_embeddings
+
+→
+
+→
+
+→ ArcFace Margin → Logits
+
+→
+
+→
+
+→ L2 Normalize → Features
+Trang 14
+
+3
+
+Phương pháp sử dụng
+
+3.2 Magface
+
+Trang 15
+
+3
+
+Phương pháp sử dụng
+
+3.2 Magface
+MagFace model khác biệt với ArcFace ở việc sử dụng adaptive margin dựa trên
+feature magnitude để đánh giá chất lượng ảnh:
+Backbone Network: ResNet tương tự ArcFace
+MagLinear Layer: Adaptive margin based on feature magnitude
+Quality Assessment: Magnitude Quality score
+
+→
+
+Trang 16
+
+3
+
+Phương pháp sử dụng
+
+3.2 Magface
+Không giống như ArcFace hay CosFace sử dụng một margin cố định,
+MagFace đề xuất một margin m thay đổi một cách linh hoạt dựa trên độ lớn
+của vector đặc trưng.
+những ảnh chất lượng cao sẽ có vector đặc trưng với độ lớn cao, và do đó sẽ
+được gán một margin lớn hơn. Ngược lại, ảnh chất lượng thấp có độ lớn thấp
+sẽ được gán một margin nhỏ hơn.
+Điều này giúp mô hình tập trung học các đặc trưng phân biệt mạnh mẽ hơn
+cho các mẫu chất lượng cao, trong khi vẫn xử lý được các mẫu chất lượng
+thấp.
+Trang 16
+
+3
+
+Phương pháp sử dụng
+
+3.2.1 Adaptive Margin Calculation
+Đầu tiên, margin thích ứng m(||f_i||) được tính cho mỗi mẫu i dựa trên độ lớn của
+vector đặc trưng ||f_i||:
+
+Trang 17
+
+3
+
+Phương pháp sử dụng
+
+3.2.2 Feature Magnitude Constraints
+l_a: 10 (lower bound)
+u_a: 110 (upper bound)
+High magnitude High quality
+Low magnitude Low quality
+
+→
+→
+
+→ Large margin
+→ Small margin
+
+Trang 18
+
+3
+
+Phương pháp sử dụng
+
+3.2.3 MagFace Loss Formula
+
+f_i: Vector đặc trưng của mẫu thứ i.
+||f_i||: Độ lớn (L2-norm) của vector đặc trưng, được dùng như một chỉ số chất lượng.
+: Góc giữa vector đặc trưng f_i và vector trọng số của lớp y_i.
+m(||f_i||): Margin thích ứng được tính dựa trên độ lớn ||f_i||.
+s: Siêu tham số co giãn (scale factor).
+g(||f_i||): Hàm regularization cho độ lớn, giúp phân phối các độ lớn một cách đồng đều.
+: Hệ số để cân bằng giữa hai thành phần loss.
+
+Trang 18
+
+3
+
+Phương pháp sử dụng
+
+3.2.4 Luồng xử lý
+Training Mode:
+Input Backbone Embeddings (không normalize)
+Calculate magnitude Adaptive margin Logits
+Return: (logits, embeddings, magnitudes)
+
+→
+
+→
+
+→
+
+→
+
+→
+
+Inference Mode:
+Input Backbone Embeddings + Magnitudes
+Quality scores
+Return: (embeddings, quality_scores)
+
+→
+
+→
+
+→
+
+Trang 19
+
+4
+
+Kết quả thực nghiệm
+
+Dataset
+Nhóm sử dụng dataset MORPH-II để train và dataset Age-DB30 để kiểm thử:
+
+MORPH-II
+~ 53.231 ảnh — 12.775 người.
+Kích thước 112x112 đã detect và crop về rõ mặt.
+Mỗi người có trung bình 4 ảnh, chụp ở các khoảng thời gian khác nhau
+Khoảng cách thời gian từ vài tháng đến hơn 20 năm.
+Age-DB30
+Chứa hình ảnh của người nổi tiếng, chính trị gia và nhà khoa học.
+12.240 ảnh của 440 danh tính.
+Trang 20
+
+4
+
+Kết quả thực nghiệm
+
+Dataset
+
+Chia positive và negative pairs
+
+Chia positive và negative pairs
+
+gap 2 years: 1016 pair
+
+gap 2 years: 128 pair
+
+gap 4 years: 989 pair
+
+gap 4 years: 128 pair
+
+gap 6 year: 128 pair
+
+gap 6 year: 128 pair
+
+gap 8 year: 138 pair
+
+gap 8 year: 128 pair
+
+gap 10 year: 208 pair
+
+gap 10 year: 128 pair
+
+Trang 20
+
+4
+
+Kết quả thực nghiệm
+
+Dataset
+
+Chia positive và negative pairs
+
+Chia positive và negative pairs
+
+16-29 years: 8867 unique
+
+16-29 years: 1281 unique
+
+30-49 years: 1281 unique
+
+30-49 years: 1281 unique
+
+50-70 year: 8897 unique
+
+50-70 year: 1281 unique
+
+Trang 20
+
+4
+
+Kết quả thực nghiệm
+
+Metrics
+Accuracy (ACC): Đo tỷ lệ cặp ảnh được phân loại đúng.
+
+Degradation Rate: Đo mức suy giảm hiệu suất khi tuổi tăng hoặc khoảng cách
+năm tăng.
+
+Trang 21
+
+4
+
+Kết quả thực nghiệm
+
+Metrics
+EER (Equal Error Rate): Mức mà FAR = FRR. Chỉ số càng thấp càng tốt.
+
+TAR@FAR (0.01 / 0.001): Tỷ lệ chấp nhận đúng (TAR) khi hệ thống bị giới hạn
+FAR cực thấp.
+
+Cosine Similarity: Đo độ tương đồng giữa hai embedding khuôn mặt.
+
+Trang 22
+
+4
+
+Kết quả thực nghiệm
+
+Trang 23
+
+4
+
+Kết quả thực nghiệm
+
+Trang 24
+
+4
+
+Kết quả thực nghiệm
+
+Trang 25
+
+4 Kết quả thực nghiệm
+
+Trang 25
+
+4 Kết quả thực nghiệm
+
+Trang 25
+
+4
+
+Kết quả thực nghiệm
+
+Trang 26
+
+4
+
+Kết quả thực nghiệm
+
+Trang 27
+
+4
+
+Kết quả thực nghiệm
+
+Trang 28
+
+4
+
+Kết quả thực nghiệm
+
+Trang 29
+
+4
+
+Kết quả thực nghiệm
+
+Trang 30
+
+THỊ GIÁC MÁY TÍNH NÂNG CAO
+
+5
+
+Đánh giá - Nhận xét
+
+Tuổi tác và khoảng cách thời gian ảnh hưởng rõ rệt đến FR: Độ chính xác nhận diện
+giảm dần khi chênh lệch tuổi giữa hai ảnh tăng, đặc biệt từ 6–10 năm trở lên.
+Sự khác biệt giữa các nhóm tuổi: Mô hình hoạt động tốt nhất trên nhóm 16–29 tuổi và suy
+giảm đáng kể ở nhóm tuổi lớn (50–70), phản ánh sự thay đổi sinh học của khuôn mặt theo
+thời gian.
+So sánh mô hình: MagFace cho độ ổn định cao hơn ArcFace trong các kịch bản thay đổi
+tuổi lớn nhờ cơ chế adaptive margin và đánh giá chất lượng ảnh.
+
+CS331.Q11.KHTN
+
+Hạn chế chung: Cả hai mô hình vẫn chưa hoàn toàn giải quyết được bài toán ageinvariant face recognition, đặc trưng khuôn mặt vẫn bị suy giảm theo thời gian.
+Ý nghĩa thực tiễn: Kết quả cho thấy cần phát triển các mô hình FR bền vững hơn theo tuổi
+cho các ứng dụng an ninh, giám sát và xác thực danh tính dài hạn.
+Trang 31
+
+6
+
+Tài liệu tham khảo
+
+Paper/Github:
+
+1.GitHub - serengil/deepface: A Lightweight Face Recognition and Facial Attribute Analysis (Age, Gender,
+Emotion and Race) Library for Python
+2.[2103.01520] When Age-Invariant Face Recognition Meets Face Age Synthesis: A Multi-Task Learning
+Framework
+3.Longitudinal Evaluation of Child Face Recognition and the Impact of Underlying Age
+4.Face Recognition In Children: A Longitudinal Study
+5.Longitudinal Study of Automatic Face Recognition
+6.Synthetic Face Ageing: Evaluation, Analysis and Facilitation of Age-Robust Facial Recognition Algorithms
+Dataset:
+
+Morph-2: https://www.kaggle.com/datasets/chiragsaipanuganti/morph/data
+Age-DB30: https://www.kaggle.com/datasets/yakhyokhuja/agedb-30-calfw-cplfw-lfw-aligned-112x112
+
+Thank
+You
+Thank
+You
+Thank You
+Nguyễn Văn Minh - 23520945@gm.uit.edu.vn
+Nguyễn Văn Hồng Thái - 23521418@gm.uit.edu.vn
+
+
